@@ -1,0 +1,32 @@
+{
+  "districts": {
+    "Bagalkot": { "score": 1 },
+    "Ballari": { "score": 2 },
+    "Belagavi": { "score": 0 },
+    "Bengaluru Urban": { "score": 1 },
+    "Bidar": { "score": 2 },
+    "Chamarajanagar": { "score": 0 },
+    "Chikmagalur": { "score": 1 },
+    "Chitradurga": { "score": 2 },
+    "Dakshina Kannada": { "score": 1 },
+    "Davanagere": { "score": 1 },
+    "Dharwad": { "score": 1 },
+    "Gadag": { "score": 0 },
+    "Hassan": { "score": 1 },
+    "Haveri": { "score": 2 },
+    "Kalaburagi": { "score": 2 },
+    "Kodagu": { "score": 0 },
+    "Kolar": { "score": 1 },
+    "Koppal": { "score": 2 },
+    "Mandya": { "score": 1 },
+    "Mysuru": { "score": 0 },
+    "Raichur": { "score": 2 },
+    "Ramanagara": { "score": 1 },
+    "Shivamogga": { "score": 1 },
+    "Tumakuru": { "score": 1 },
+    "Udupi": { "score": 0 },
+    "Uttara Kannada": { "score": 1 },
+    "Vijayanagara": { "score": 2 },
+    "Yadgir": { "score": 2 }
+  }
+}
