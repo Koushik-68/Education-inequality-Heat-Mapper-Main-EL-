@@ -11,9 +11,18 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import Loader from "./component/Loader.jsx";
 
 function Layout({ children }) {
   const location = useLocation();
+  const [routeLoading, setRouteLoading] = useState(false);
+
+  useEffect(() => {
+    setRouteLoading(true);
+    const t = setTimeout(() => setRouteLoading(false), 700);
+    return () => clearTimeout(t);
+  }, [location.pathname]);
 
   // ✅ Determine active sidebar item
   let active = "Dashboard";
@@ -146,6 +155,23 @@ function Layout({ children }) {
         </div>
       </header>
 
+      {/* Global centered overlay for route changes */}
+      {routeLoading && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 60,
+            pointerEvents: "none",
+          }}
+        >
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <Loader size="md" />
+          </div>
+        </div>
+      )}
+
       {/* ✅ BODY WITH SIDEBAR */}
       <div style={containerStyle}>
         <div
@@ -196,3 +222,5 @@ function App() {
 }
 
 export default App;
+
+// (No global keyframes needed; Loader uses Tailwind classes)

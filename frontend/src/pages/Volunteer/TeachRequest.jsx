@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVolunteer } from "./VolunteerContext.jsx";
 import { useDistrictData } from "./DistrictUtils.js";
@@ -13,7 +13,7 @@ import {
 
 export default function TeachRequest() {
   const navigate = useNavigate();
-  const { submitTeach } = useVolunteer();
+  const { submitTeach, profile, setProfile, startLoading } = useVolunteer();
   const [form, setForm] = useState({
     subject: "",
     mode: "offline",
@@ -25,6 +25,22 @@ export default function TeachRequest() {
 
   const suggested = suggestLabel(form);
 
+  // Prefill from saved preferences
+  useEffect(() => {
+    const prefs = profile?.preferences;
+    if (prefs) {
+      setForm((prev) => ({
+        ...prev,
+        subject: prefs.subject || prev.subject,
+        mode: prefs.mode || prev.mode,
+        availability: prefs.availability || prev.availability,
+        myDistrict: prefs.myDistrict || prev.myDistrict,
+        preferredDistrict: prefs.preferredDistrict || prev.preferredDistrict,
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -32,7 +48,17 @@ export default function TeachRequest() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    startLoading(900);
     const record = submitTeach(form);
+    // Persist preferences to profile
+    const nextPrefs = {
+      subject: form.subject,
+      mode: form.mode,
+      availability: form.availability,
+      myDistrict: form.myDistrict,
+      preferredDistrict: form.preferredDistrict,
+    };
+    setProfile({ ...(profile || {}), preferences: nextPrefs });
     navigate("/volunteer/citizen/requests", { state: { lastId: record.id } });
   };
 
@@ -40,8 +66,18 @@ export default function TeachRequest() {
   const { names, nearestHighInequality, loading } = useDistrictData();
   const suggestions = useMemo(() => {
     if (!form.myDistrict) return [];
-    return nearestHighInequality(form.myDistrict, 3);
-  }, [form.myDistrict, nearestHighInequality]);
+    return nearestHighInequality(form.myDistrict, 3, {
+      subject: form.subject,
+      mode: form.mode,
+      availability: form.availability,
+    });
+  }, [
+    form.myDistrict,
+    form.subject,
+    form.mode,
+    form.availability,
+    nearestHighInequality,
+  ]);
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4">

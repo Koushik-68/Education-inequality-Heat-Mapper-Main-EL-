@@ -15,16 +15,36 @@ import {
 } from "lucide-react";
 
 export default function RequestVerification() {
-  const { requests, adminUpdate } = useVolunteer();
-  const pending = useMemo(
+  const { requests, adminUpdate, startLoading } = useVolunteer();
+  const [filters, setFilters] = useState({
+    district: "",
+    subject: "",
+    mode: "",
+  });
+  const pendingAll = useMemo(
     () => requests.filter((r) => r.status === "Pending"),
     [requests],
   );
+  const pending = useMemo(() => {
+    return pendingAll.filter((r) => {
+      const d = (r.details?.preferredDistrict || "").toLowerCase();
+      const s = (r.details?.subject || r.details?.itemName || "").toLowerCase();
+      const m = (r.details?.mode || "").toLowerCase();
+      const fd = (filters.district || "").toLowerCase();
+      const fs = (filters.subject || "").toLowerCase();
+      const fm = (filters.mode || "").toLowerCase();
+      const matchD = fd ? d.includes(fd) : true;
+      const matchS = fs ? s.includes(fs) : true;
+      const matchM = fm ? m.includes(fm) : true;
+      return matchD && matchS && matchM;
+    });
+  }, [pendingAll, filters]);
   const [selectedId, setSelectedId] = useState(pending[0]?.id || null);
   const selected = pending.find((r) => r.id === selectedId) || null;
 
   const handleAction = (action) => {
     if (!selected) return;
+    startLoading(800);
     if (action === "approve") {
       adminUpdate(selected.id, {
         status: "Approved",
@@ -57,8 +77,37 @@ export default function RequestVerification() {
         </div>
         <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 shadow-sm">
           <Filter size={14} />
-          Status:{" "}
-          <span className="text-amber-600 uppercase">Pending Review</span>
+          <span className="uppercase">Filters</span>
+          <div className="flex items-center gap-2 ml-2">
+            <input
+              placeholder="District"
+              value={filters.district}
+              onChange={(e) =>
+                setFilters((p) => ({ ...p, district: e.target.value }))
+              }
+              className="px-2 py-1 rounded-lg border border-slate-200 text-xs"
+            />
+            <input
+              placeholder="Subject/Item"
+              value={filters.subject}
+              onChange={(e) =>
+                setFilters((p) => ({ ...p, subject: e.target.value }))
+              }
+              className="px-2 py-1 rounded-lg border border-slate-200 text-xs"
+            />
+            <select
+              value={filters.mode}
+              onChange={(e) =>
+                setFilters((p) => ({ ...p, mode: e.target.value }))
+              }
+              className="px-2 py-1 rounded-lg border border-slate-200 text-xs"
+            >
+              <option value="">Any Mode</option>
+              <option value="offline">Offline</option>
+              <option value="online">Online</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -139,7 +188,8 @@ export default function RequestVerification() {
                     </h3>
                     <div className="flex items-center gap-4 text-sm">
                       <span className="flex items-center gap-1.5 text-slate-500">
-                        <Clock size={14} /> Submission: 2 hours ago
+                        <Clock size={14} /> Submission:{" "}
+                        {timeAgo(selected.createdAt)}
                       </span>
                       <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded uppercase">
                         {selected.status}
@@ -171,6 +221,11 @@ export default function RequestVerification() {
                         selected.details?.preferredDistrict || "Not Specified"
                       }
                       icon={<Map size={16} />}
+                    />
+                    <DetailItem
+                      label="Mode"
+                      value={selected.details?.mode || "-"}
+                      icon={<ClipboardList size={16} />}
                     />
                   </div>
                 </section>
@@ -241,4 +296,21 @@ function DetailItem({ label, value, icon }) {
       <div className="text-slate-800 font-bold">{value}</div>
     </div>
   );
+}
+
+function timeAgo(ts) {
+  if (!ts) return "recently";
+  const seconds = Math.floor((Date.now() - ts) / 1000);
+  const intervals = [
+    [31536000, "yr"],
+    [2592000, "mo"],
+    [86400, "d"],
+    [3600, "h"],
+    [60, "m"],
+  ];
+  for (const [sec, label] of intervals) {
+    const v = Math.floor(seconds / sec);
+    if (v >= 1) return `${v} ${label} ago`;
+  }
+  return `${seconds}s ago`;
 }

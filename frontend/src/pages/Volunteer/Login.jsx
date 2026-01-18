@@ -6,7 +6,7 @@ import { User, ShieldCheck, ArrowRight } from "lucide-react";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { setRole } = useVolunteer();
+  const { setRole, setProfile, startLoading } = useVolunteer();
   const [username, setUsername] = useState(""); // Admin username/id
   const [password, setPassword] = useState("");
   const [name, setName] = useState(""); // Citizen name for signup
@@ -44,6 +44,7 @@ export default function Login() {
     if (selectedRole === "admin") {
       // Admin: fixed credentials
       if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        startLoading(700);
         setRole("admin");
         persistCurrentUser({ role: "admin", username });
         navigate("/volunteer/admin");
@@ -70,7 +71,9 @@ export default function Login() {
       }
       const next = [...users, { name: name.trim(), email: emailLc, password }];
       saveCitizenUsers(next);
+      startLoading(800);
       setRole("citizen");
+      setProfile({ name: name.trim(), email: emailLc, preferences: {} });
       persistCurrentUser({
         role: "citizen",
         name: name.trim(),
@@ -85,7 +88,9 @@ export default function Login() {
         setError("Invalid credentials. Please check email/password.");
         return;
       }
+      startLoading(700);
       setRole("citizen");
+      setProfile({ name: user.name || "", email: user.email, preferences: {} });
       persistCurrentUser({
         role: "citizen",
         name: user.name || "",

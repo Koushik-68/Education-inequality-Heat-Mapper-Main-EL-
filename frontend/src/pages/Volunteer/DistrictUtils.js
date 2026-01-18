@@ -127,7 +127,7 @@ export function useDistrictData() {
 
   const names = useMemo(() => districts.map((d) => d.name).sort(), [districts]);
 
-  function nearestHighInequality(myDistrict, count = 3) {
+  function nearestHighInequality(myDistrict, count = 3, opts = {}) {
     const base = districts.find((d) => d.name === canonicalName(myDistrict));
     if (!base || !base.centroid) return [];
     const sorted = districts
@@ -136,11 +136,64 @@ export function useDistrictData() {
         name: d.name,
         eii: d.eii ?? 0,
         distance: haversine(base.centroid, d.centroid),
-      }))
-      .sort((a, b) => a.distance - b.distance);
-    // Take nearest 8 by distance, then pick top by EII
-    const nearest8 = sorted.slice(0, 8);
-    return nearest8.sort((a, b) => (b.eii || 0) - (a.eii || 0)).slice(0, count);
+      }));
+
+    // Normalize EII and distance for scoring
+    const eiiVals = sorted.map((s) => s.eii || 0);
+    const eiiMin = Math.min(...eiiVals, 0);
+    const eiiMax = Math.max(...eiiVals, 1);
+    const distVals = sorted.map((s) => s.distance || 0);
+    const distMin = Math.min(...distVals, 0);
+    const distMax = Math.max(...distVals, 1);
+
+    const subject = String(opts.subject || "").toLowerCase();
+    const mode = String(opts.mode || "").toLowerCase(); // offline|online|hybrid
+    const availability = String(opts.availability || "").toLowerCase();
+
+    function subjectWeight(name) {
+      // Lightweight heuristic: align subject to historically flagged districts
+      if (subject.includes("math") || subject.includes("science")) {
+        return name === "Kalaburagi" ? 1 : 0.7;
+      }
+      if (subject.includes("english") || subject.includes("language")) {
+        return name === "Bidar" ? 1 : 0.7;
+      }
+      if (subject.includes("computer") || subject.includes("coding")) {
+        return name === "Ballari" ? 1 : 0.7;
+      }
+      return 0.5; // neutral
+    }
+
+    function availabilityWeight() {
+      if (!availability) return 0.5;
+      if (availability.includes("weekend") || availability.includes("evening"))
+        return 0.6;
+      if (availability.includes("hour")) return 0.5;
+      return 0.5;
+    }
+
+    function distanceWeight(distKm) {
+      // Prefer closer for offline; allow farther for online
+      const norm = (distKm - distMin) / Math.max(1e-6, distMax - distMin);
+      const inv = 1 - norm; // closer -> higher
+      if (mode === "online") return 0.5 + inv * 0.2; // distance less critical
+      if (mode === "hybrid") return 0.6 + inv * 0.25;
+      return 0.7 + inv * 0.3; // offline prefers closer
+    }
+
+    const scored = sorted.map((s) => {
+      const eiiNorm = (s.eii - eiiMin) / Math.max(1e-6, eiiMax - eiiMin);
+      const subjW = subjectWeight(s.name);
+      const availW = availabilityWeight();
+      const distW = distanceWeight(s.distance);
+      // Composite score: weight EII heavily, then subject, then distance
+      const score = eiiNorm * 0.6 + subjW * 0.2 + distW * 0.15 + availW * 0.05;
+      return { ...s, score };
+    });
+
+    return scored
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, count);
   }
 
   return { districts, names, nearestHighInequality, loading, error };

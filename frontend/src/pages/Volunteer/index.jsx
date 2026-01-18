@@ -1,5 +1,11 @@
-import React from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import React, { useEffect } from "react";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import VolunteerProvider, { useVolunteer } from "./VolunteerContext.jsx";
 import Login from "./Login.jsx";
 import CitizenDashboard from "./CitizenDashboard.jsx";
@@ -9,6 +15,7 @@ import RequestTracking from "./RequestTracking.jsx";
 import AdminDashboard from "./AdminDashboard.jsx";
 import RequestVerification from "./RequestVerification.jsx";
 import AllocationImpact from "./AllocationImpact.jsx";
+import Loader from "../../component/Loader.jsx";
 
 // Professional Icons
 import { LogOut, ShieldCheck, UserCircle, Compass, Zap } from "lucide-react";
@@ -28,6 +35,7 @@ function GuardedAdmin({ children }) {
 export default function VolunteerModule() {
   return (
     <VolunteerProvider>
+      <RouteLoadingOverlay />
       {/* Match Login page background (dark radial gradient) */}
       <div className="min-h-screen bg-slate-950 font-sans antialiased bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black">
         <HeaderBar />
@@ -192,5 +200,26 @@ function HeaderBar() {
         </div>
       </div>
     </nav>
+  );
+}
+
+function RouteLoadingOverlay() {
+  const location = useLocation();
+  const { uiLoading, startLoading } = useVolunteer();
+
+  useEffect(() => {
+    // Emulate backend loading on volunteer route changes
+    startLoading(600);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  if (!uiLoading) return null;
+  return (
+    <div className="fixed inset-0 z-[100] pointer-events-none">
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+        <Loader size="md" />
+      </div>
+    </div>
   );
 }

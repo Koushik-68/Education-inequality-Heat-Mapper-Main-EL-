@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useVolunteer } from "./VolunteerContext.jsx";
 // Icons make the UI feel intuitive and modern
 import {
   BookOpen,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 
 export default function CitizenDashboard() {
+  const { profile } = useVolunteer();
   return (
     <div className="min-h-screen bg-[#f8fafc] pb-12">
       {/* Header Section */}
@@ -21,6 +23,15 @@ export default function CitizenDashboard() {
           <p className="text-slate-500 mt-2 flex items-center gap-2">
             Empowering communities through verified requests and transparency.
           </p>
+          {profile?.name && (
+            <div className="mt-2 text-xs text-slate-400">
+              Signed in as{" "}
+              <span className="font-semibold text-slate-600">
+                {profile.name}
+              </span>
+              {profile.email ? ` (${profile.email})` : ""}
+            </div>
+          )}
         </div>
       </div>
 
@@ -115,21 +126,21 @@ function InfoBlock() {
         <div className="flex-1">
           <div className="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-6 border border-indigo-500/30">
             <Sparkles size={14} />
-            Smart Governance
+            Real-Time District Alerts
           </div>
           <h2 className="text-2xl md:text-3xl font-bold mb-4">
-            Optimized Impact Tracking
+            Live Request Updates
           </h2>
           <p className="text-slate-400 leading-relaxed mb-6 max-w-lg">
-            Our system utilizes intelligent mapping to ensure your contributions
-            reach the regions with the highest urgency and potential for growth.
+            Stay on top of urgent needs with live alerts and automatic status
+            updates for your requests and nearby opportunities.
           </p>
         </div>
 
         <div className="flex-1 w-full grid grid-cols-1 gap-4">
-          <FeatureItem text="ML-driven district impact suggestions" />
-          <FeatureItem text="Real-time request lifecycle transparency" />
-          <FeatureItem text="Verified governance & admin accountability" />
+          <FeatureItem text="Instant alerts for urgent district needs" />
+          <FeatureItem text="Live status updates on your requests" />
+          <FeatureItem text="Real-time matching with nearby opportunities" />
         </div>
       </div>
     </div>

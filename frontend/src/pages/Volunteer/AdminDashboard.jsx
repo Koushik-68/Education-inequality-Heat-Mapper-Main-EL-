@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 export default function AdminDashboard() {
-  const { requests } = useVolunteer();
+  const { requests, profile } = useVolunteer();
   const pendingCount = requests.filter((r) => r.status === "Pending").length;
   const byDistrict = groupByDistrict(requests);
   const highRisk = getHighRiskDistricts();
@@ -39,6 +39,12 @@ export default function AdminDashboard() {
             System Live
           </span>
           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+          {profile?.name && (
+            <span className="ml-2 text-xs text-slate-300">
+              Signed in: {profile.name}
+              {profile.email ? ` (${profile.email})` : ""}
+            </span>
+          )}
         </div>
       </div>
 

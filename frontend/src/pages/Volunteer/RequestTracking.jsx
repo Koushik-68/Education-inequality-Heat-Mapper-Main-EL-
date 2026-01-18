@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useVolunteer } from "./VolunteerContext.jsx";
 import {
@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 
 export default function RequestTracking() {
-  const { requests } = useVolunteer();
+  const { requests, updateRequest, cancelRequest, startLoading } =
+    useVolunteer();
   const location = useLocation();
   const lastId = location.state?.lastId;
 
@@ -80,7 +81,19 @@ export default function RequestTracking() {
           </div>
         ) : (
           sortedRequests.map((r) => (
-            <RequestCard key={r.id} request={r} isNew={r.id === lastId} />
+            <RequestCard
+              key={r.id}
+              request={r}
+              isNew={r.id === lastId}
+              onEdit={(updates) => {
+                startLoading(600);
+                updateRequest(r.id, { details: { ...r.details, ...updates } });
+              }}
+              onCancel={() => {
+                startLoading(700);
+                cancelRequest(r.id);
+              }}
+            />
           ))
         )}
       </div>
@@ -103,7 +116,13 @@ export default function RequestTracking() {
   );
 }
 
-function RequestCard({ request, isNew }) {
+function RequestCard({ request, isNew, onEdit, onCancel }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    preferredDistrict: request.details?.preferredDistrict || "",
+    availability: request.details?.availability || "",
+  });
+  const canEdit = request.status === "Pending";
   return (
     <div
       className={`group bg-white rounded-[2rem] border-2 transition-all duration-300 overflow-hidden ${
@@ -173,6 +192,80 @@ function RequestCard({ request, isNew }) {
             />
           </div>
         </div>
+
+        {/* Edit / Cancel for Pending */}
+        {canEdit && (
+          <div className="bg-indigo-50/40 border border-indigo-100 rounded-2xl p-4 mb-6">
+            {!editing ? (
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-indigo-700">
+                  Pending request — you can edit or withdraw.
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-600 hover:text-white transition"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={onCancel}
+                    className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white border border-red-200 text-red-700 hover:bg-red-600 hover:text-white transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                    Preferred District
+                  </label>
+                  <input
+                    value={form.preferredDistrict}
+                    onChange={(e) =>
+                      setForm((p) => ({
+                        ...p,
+                        preferredDistrict: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                    Availability
+                  </label>
+                  <input
+                    value={form.availability}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, availability: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      onEdit(form);
+                      setEditing(false);
+                    }}
+                    className="px-3 py-2 text-xs font-bold rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="px-3 py-2 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer Info */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/80 -mx-8 -mb-8 p-6 mt-6">
