@@ -2,6 +2,7 @@ import Dashboard from "./pages/Dashboard.jsx";
 import StateSummary from "./pages/StateSummary.jsx";
 import DataUpload from "./pages/DataUpload.jsx";
 import VolunteerModule from "./pages/Volunteer/index.jsx";
+import DistrictTypology from "./pages/DistrictTypology.jsx";
 import Sidebar from "./component/Sidebar.jsx";
 import {
   BrowserRouter as Router,
@@ -20,6 +21,8 @@ function Layout({ children }) {
     active = "StateSummary";
   } else if (location.pathname.startsWith("/data-upload")) {
     active = "DataUpload";
+  } else if (location.pathname.startsWith("/district-typology")) {
+    active = "DistrictTypology";
   } else if (location.pathname.startsWith("/dashboard")) {
     active = "Dashboard";
   } else if (location.pathname.startsWith("/volunteer")) {
@@ -184,6 +187,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/state-summary" element={<StateSummary />} />
           <Route path="/data-upload" element={<DataUpload />} />
+          <Route path="/district-typology" element={<DistrictTypology />} />
           <Route path="/volunteer/*" element={<VolunteerModule />} />
         </Routes>
       </Layout>

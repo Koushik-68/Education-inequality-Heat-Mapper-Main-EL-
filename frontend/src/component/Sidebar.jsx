@@ -142,6 +142,12 @@ export default function Sidebar({ active = "Dashboard" }) {
           href="/volunteer"
           icon={<IconVolunteer />}
         />
+        <SidebarButton
+          label="District Typology"
+          active={active === "DistrictTypology"}
+          href="/district-typology"
+          icon={<IconVolunteer />}
+        />
       </nav>
 
       {/* Footer / Access Level Section */}
