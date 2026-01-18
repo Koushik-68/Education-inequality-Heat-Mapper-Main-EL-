@@ -14,9 +14,8 @@ import {
 function Layout({ children }) {
   const location = useLocation();
 
-  // ✅ Determine active sidebar item (FIXED)
+  // ✅ Determine active sidebar item
   let active = "Dashboard";
-
   if (location.pathname.startsWith("/state-summary")) {
     active = "StateSummary";
   } else if (location.pathname.startsWith("/data-upload")) {
@@ -26,20 +25,24 @@ function Layout({ children }) {
   } else if (location.pathname.startsWith("/volunteer")) {
     active = "Volunteer";
   }
+
   const HEADER_HEIGHT = 78;
   const SIDEBAR_WIDTH = 300;
 
+  // Updated styles to match Login/Sidebar Design
   const containerStyle = {
     display: "flex",
     height: `calc(100vh - ${HEADER_HEIGHT}px)`,
     width: "100vw",
     overflow: "hidden",
-    background: "#f6fafc",
+    background: "#020617", // slate-950
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f6fafc" }}>
-      {/* ✅ YOUR HEADER — UNTOUCHED */}
+    <div
+      style={{ minHeight: "100vh", background: "#020617", color: "#f8fafc" }}
+    >
+      {/* ✅ HEADER — Updated for Dark Matte/Indigo Theme */}
       <header
         style={{
           height: HEADER_HEIGHT,
@@ -47,11 +50,10 @@ function Layout({ children }) {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "0 28px",
-          borderBottom: "3px solid #0B3D91",
-          background:
-            "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,253,255,0.98))",
+          borderBottom: "1px solid rgba(255,255,255,0.1)", // Glass border
+          background: "rgba(2, 6, 23, 0.8)", // Semi-transparent slate-950
+          backdropFilter: "blur(12px)",
           boxSizing: "border-box",
-          boxShadow: "0 2px 8px rgba(9,30,66,0.03)",
           position: "sticky",
           top: 0,
           zIndex: 40,
@@ -60,27 +62,49 @@ function Layout({ children }) {
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <div
             style={{
-              width: 48,
-              height: 48,
+              width: 44,
+              height: 44,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              borderRadius: 8,
-              background: "#0B3D91",
-              boxShadow: "0 6px 18px rgba(11,61,145,0.12)",
+              borderRadius: 12,
+              background: "#4f46e5", // Indigo-600
+              boxShadow: "0 0 20px rgba(79,70,229,0.3)",
+              border: "1px solid rgba(255,255,255,0.1)",
             }}
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="11" fill="#fff" />
-              <circle cx="12" cy="12" r="6" fill="#0B3D91" />
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth="2.5"
+            >
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
           </div>
-          <div style={{ lineHeight: 1 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#0B3D91" }}>
-              EDUCATIONAL INEQUALITY HEAT MAPPER
+          <div style={{ lineHeight: 1.2 }}>
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 800,
+                color: "#fff",
+                letterSpacing: "0.5px",
+              }}
+            >
+              EDUCATIONAL HEAT MAPPER
             </div>
-            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
-              Government of India • Public dashboard
+            <div
+              style={{
+                fontSize: 11,
+                color: "#94a3b8",
+                fontWeight: 500,
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+              }}
+            >
+              Unified Volunteer Portal
             </div>
           </div>
         </div>
@@ -88,27 +112,30 @@ function Layout({ children }) {
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <button
             style={{
-              background: "#0B3D91",
+              background: "#4f46e5",
               color: "#fff",
-              padding: "10px 16px",
-              border: "none",
-              borderRadius: 6,
+              padding: "10px 20px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: 10,
               cursor: "pointer",
-              fontWeight: 700,
-              boxShadow: "0 8px 30px rgba(11,61,145,0.08)",
+              fontSize: "14px",
+              fontWeight: 600,
+              transition: "all 0.3s ease",
+              boxShadow: "0 4px 15px rgba(79,70,229,0.2)",
             }}
           >
             Download Report
           </button>
           <button
             style={{
-              background: "transparent",
-              color: "#263244",
-              padding: "8px 12px",
-              border: "1px solid #e6eef8",
-              borderRadius: 6,
+              background: "rgba(255,255,255,0.05)",
+              color: "#cbd5e1",
+              padding: "10px 16px",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 10,
               cursor: "pointer",
-              fontWeight: 700,
+              fontSize: "14px",
+              fontWeight: 600,
             }}
           >
             Help
@@ -123,7 +150,7 @@ function Layout({ children }) {
             width: SIDEBAR_WIDTH,
             height: "100%",
             flexShrink: 0,
-            padding: 18,
+            padding: 0, // Removed padding to let sidebar hit the edge like Login
           }}
         >
           <Sidebar active={active} />
@@ -135,8 +162,10 @@ function Layout({ children }) {
             minWidth: 0,
             height: "100%",
             overflowY: "auto",
-            padding: "0",
+            padding: "24px",
             boxSizing: "border-box",
+            background:
+              "radial-gradient(circle at top right, rgba(79,70,229,0.05), transparent)",
           }}
         >
           {children}

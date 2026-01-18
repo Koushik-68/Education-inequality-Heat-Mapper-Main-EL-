@@ -70,12 +70,16 @@ function getLabel(val) {
    DESIGN SYSTEM
 ======================= */
 const COLORS = {
-  primary: "#0B3D91",
-  bg: "#F6F8FB",
-  card: "#FFFFFF",
-  text: "#1F2937",
-  muted: "#6B7280",
-  border: "#E5E7EB",
+  // Indigo accent to match Login page
+  primary: "#6366F1", // indigo-500
+  // Dark matte background
+  bg: "#0A0F1E",
+  // Glassmorphism-style card surface
+  card: "rgba(255,255,255,0.08)",
+  // High-contrast text on dark
+  text: "#F8FAFC", // slate-50
+  muted: "#94A3B8", // slate-400
+  border: "rgba(255,255,255,0.18)",
 };
 
 /* =======================
@@ -260,7 +264,14 @@ export default function StateSummary() {
   if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
 
   return (
-    <div style={{ background: COLORS.bg, minHeight: "100vh", padding: 24 }}>
+    <div
+      style={{
+        background: COLORS.bg,
+        minHeight: "100vh",
+        padding: 24,
+      }}
+      className="bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black"
+    >
       {/* GRID WRAPPER */}
       <div
         style={{
@@ -276,10 +287,13 @@ export default function StateSummary() {
         <div
           style={{
             background: COLORS.card,
-            borderRadius: 12,
+            borderRadius: 16,
             padding: 16,
             border: `1px solid ${COLORS.border}`,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.35)",
+            backdropFilter: "blur(10px)",
           }}
+          className="relative"
         >
           <h2 style={{ color: COLORS.primary, marginBottom: 6 }}>
             Karnataka – District Educational Inequality
@@ -577,9 +591,11 @@ export default function StateSummary() {
         <div
           style={{
             background: COLORS.card,
-            borderRadius: 12,
+            borderRadius: 16,
             padding: 16,
             border: `1px solid ${COLORS.border}`,
+            boxShadow: "0 20px 45px rgba(0,0,0,0.35)",
+            backdropFilter: "blur(10px)",
           }}
         >
           <h3 style={{ color: COLORS.primary, marginBottom: 8 }}>
@@ -670,7 +686,7 @@ export default function StateSummary() {
                       border: `1px solid ${COLORS.border}`,
                       borderRadius: 8,
                       padding: 10,
-                      background: "#fff",
+                      background: COLORS.card,
                     }}
                   >
                     <div style={{ fontSize: 12, color: COLORS.muted }}>
@@ -694,7 +710,7 @@ export default function StateSummary() {
                       border: `1px solid ${COLORS.border}`,
                       borderRadius: 8,
                       padding: 10,
-                      background: "#fff",
+                      background: COLORS.card,
                     }}
                   >
                     <div style={{ fontSize: 12, color: COLORS.muted }}>
@@ -727,7 +743,7 @@ export default function StateSummary() {
                       border: `1px solid ${COLORS.border}`,
                       borderRadius: 8,
                       padding: 10,
-                      background: "#fff",
+                      background: COLORS.card,
                     }}
                   >
                     <div style={{ fontSize: 12, color: COLORS.muted }}>
@@ -738,7 +754,13 @@ export default function StateSummary() {
                         ? `${deltaVal.toFixed(3)} (${pctVal !== null ? pctVal.toFixed(1) + "%" : "—"})`
                         : "—"}
                     </div>
-                    <div style={{ fontSize: 12, color: COLORS.muted }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: COLORS.muted,
+                        textAlign: "center",
+                      }}
+                    >
                       {hasNumbers
                         ? improved
                           ? "Improved"
@@ -753,7 +775,7 @@ export default function StateSummary() {
                       border: `1px solid ${COLORS.border}`,
                       borderRadius: 8,
                       padding: 10,
-                      background: "#fff",
+                      background: COLORS.card,
                     }}
                   >
                     <div style={{ fontSize: 12, color: COLORS.muted }}>
@@ -801,7 +823,7 @@ export default function StateSummary() {
                   padding: "10px 12px",
                   borderRadius: 8,
                   border: `1px solid ${COLORS.border}`,
-                  background: "#fff",
+                  background: COLORS.card,
                   color: COLORS.text,
                   fontSize: 14,
                 }}
