@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVolunteer } from "./VolunteerContext.jsx";
+import { useDistrictData } from "./DistrictUtils.js";
 // Icons for a professional touch
 import {
   Gift,
@@ -20,6 +21,7 @@ export default function DonateRequest() {
     donationType: "books",
     quantity: "",
     value: "",
+    myDistrict: "",
     preferredDistrict: "",
     pickupDelivery: "pickup",
     itemName: "",
@@ -38,6 +40,11 @@ export default function DonateRequest() {
 
   const urgency = getUrgencyBadge(form);
   const suggestion = getDistrictSuggestion(form);
+  const { names, nearestHighInequality, loading } = useDistrictData();
+  const suggestions = useMemo(() => {
+    if (!form.myDistrict) return [];
+    return nearestHighInequality(form.myDistrict, 3);
+  }, [form.myDistrict, nearestHighInequality]);
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-4">
@@ -60,7 +67,7 @@ export default function DonateRequest() {
 
         <form onSubmit={handleSubmit} className="p-8 md:p-12 space-y-8">
           {/* Main Details Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-bold text-slate-700 ml-1 uppercase tracking-wider">
                 <Package size={16} className="text-emerald-600" />
@@ -92,6 +99,26 @@ export default function DonateRequest() {
                 className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all placeholder:text-slate-400"
               />
             </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-bold text-slate-700 ml-1 uppercase tracking-wider">
+                <MapPin size={16} className="text-emerald-600" />
+                My District
+              </label>
+              <select
+                name="myDistrict"
+                value={form.myDistrict}
+                onChange={handleChange}
+                className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all appearance-none text-slate-900"
+              >
+                <option value="">Select your district</option>
+                {names.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -100,14 +127,58 @@ export default function DonateRequest() {
                 <MapPin size={16} className="text-emerald-600" />
                 Preferred District
               </label>
-              <input
+              <select
                 name="preferredDistrict"
                 value={form.preferredDistrict}
                 onChange={handleChange}
-                placeholder="Enter district name"
-                className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all"
-              />
+                className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all appearance-none text-slate-900"
+              >
+                <option value="">Select preferred district</option>
+                {names.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
             </div>
+            {form.myDistrict && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-50 rounded-3xl p-5 border border-slate-100">
+                  <div className="flex items-center gap-2 text-slate-900 font-bold text-xs uppercase tracking-widest mb-3">
+                    <AlertCircle size={14} className="text-amber-500" />
+                    Nearby High-Inequality
+                  </div>
+                  {loading ? (
+                    <div className="text-xs text-slate-500">
+                      Loading suggestions…
+                    </div>
+                  ) : suggestions.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {suggestions.map((s) => (
+                        <button
+                          type="button"
+                          key={s.name}
+                          onClick={() =>
+                            setForm((p) => ({
+                              ...p,
+                              preferredDistrict: s.name,
+                            }))
+                          }
+                          className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white border border-emerald-100 text-slate-700 hover:bg-emerald-600 hover:text-white transition"
+                          title={`EII: ${s.eii ?? "-"} • ${Math.round(s.distance)} km`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-500">
+                      No nearby suggestions found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-bold text-slate-700 ml-1 uppercase tracking-wider">

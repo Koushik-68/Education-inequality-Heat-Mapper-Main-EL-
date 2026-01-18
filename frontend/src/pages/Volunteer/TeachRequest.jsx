@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useVolunteer } from "./VolunteerContext.jsx";
+import { useDistrictData } from "./DistrictUtils.js";
 import {
   BookOpen,
   MapPin,
@@ -17,6 +18,7 @@ export default function TeachRequest() {
     subject: "",
     mode: "offline",
     availability: "",
+    myDistrict: "",
     preferredDistrict: "",
     experience: "",
   });
@@ -33,6 +35,13 @@ export default function TeachRequest() {
     const record = submitTeach(form);
     navigate("/volunteer/citizen/requests", { state: { lastId: record.id } });
   };
+
+  // District data for dropdown and suggestions
+  const { names, nearestHighInequality, loading } = useDistrictData();
+  const suggestions = useMemo(() => {
+    if (!form.myDistrict) return [];
+    return nearestHighInequality(form.myDistrict, 3);
+  }, [form.myDistrict, nearestHighInequality]);
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4">
@@ -81,7 +90,7 @@ export default function TeachRequest() {
                 name="mode"
                 value={form.mode}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all appearance-none bg-white"
+                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all appearance-none bg-white text-slate-900"
               >
                 <option value="offline">In-Person (Offline)</option>
                 <option value="online">Virtual (Online)</option>
@@ -91,7 +100,7 @@ export default function TeachRequest() {
           </div>
 
           {/* Section 2: Logistics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1">
                 <Clock size={16} className="text-indigo-500" />
@@ -108,17 +117,75 @@ export default function TeachRequest() {
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1">
                 <MapPin size={16} className="text-indigo-500" />
+                My District
+              </label>
+              <select
+                name="myDistrict"
+                value={form.myDistrict}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all appearance-none bg-white text-slate-900"
+              >
+                <option value="">Select your district</option>
+                {names.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1">
+                <MapPin size={16} className="text-indigo-500" />
                 Preferred District
               </label>
-              <input
+              <select
                 name="preferredDistrict"
-                placeholder="Enter district name"
                 value={form.preferredDistrict}
                 onChange={handleChange}
-                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all"
-              />
+                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all appearance-none bg-white text-slate-900"
+              >
+                <option value="">Select preferred district</option>
+                {names.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+
+          {form.myDistrict && (
+            <div className="border border-indigo-100 bg-indigo-50/50 rounded-[1.5rem] p-5">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-indigo-600 mb-2">
+                Nearby High-Inequality
+              </div>
+              {loading ? (
+                <div className="text-xs text-slate-500">
+                  Loading suggestions…
+                </div>
+              ) : suggestions.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((s) => (
+                    <button
+                      type="button"
+                      key={s.name}
+                      onClick={() =>
+                        setForm((p) => ({ ...p, preferredDistrict: s.name }))
+                      }
+                      className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-white border border-indigo-100 text-slate-700 hover:bg-indigo-600 hover:text-white transition"
+                      title={`EII: ${s.eii ?? "-"} • ${Math.round(s.distance)} km`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500">
+                  No nearby suggestions found.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Section 3: Experience */}
           <div className="space-y-2">
@@ -132,7 +199,7 @@ export default function TeachRequest() {
               placeholder="Tell us a bit about your background..."
               value={form.experience}
               onChange={handleChange}
-              className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all resize-none"
+              className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all resize-none"
             />
           </div>
 
