@@ -7,15 +7,93 @@ import { User, ShieldCheck, ArrowRight } from "lucide-react";
 export default function Login() {
   const navigate = useNavigate();
   const { setRole } = useVolunteer();
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(""); // Admin username/id
   const [password, setPassword] = useState("");
+  const [name, setName] = useState(""); // Citizen name for signup
+  const [email, setEmail] = useState(""); // Citizen email for login/signup
   const [selectedRole, setSelectedRole] = useState("citizen");
+  const [isSignUp, setIsSignUp] = useState(false); // Only for citizen
+  const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  // Fixed Admin credentials (adjust as needed)
+  const ADMIN_USERNAME = "admin";
+  const ADMIN_PASSWORD = "admin123";
+
+  // LocalStorage helpers for citizen accounts
+  const loadCitizenUsers = () => {
+    try {
+      const raw = localStorage.getItem("citizenUsers");
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const saveCitizenUsers = (users) => {
+    localStorage.setItem("citizenUsers", JSON.stringify(users));
+  };
+
+  const persistCurrentUser = (data) => {
+    localStorage.setItem("currentUser", JSON.stringify(data));
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setRole(selectedRole);
-    if (selectedRole === "citizen") navigate("/volunteer/citizen");
-    else navigate("/volunteer/admin");
+    setError("");
+
+    if (selectedRole === "admin") {
+      // Admin: fixed credentials
+      if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        setRole("admin");
+        persistCurrentUser({ role: "admin", username });
+        navigate("/volunteer/admin");
+      } else {
+        setError("Invalid admin credentials.");
+      }
+      return;
+    }
+
+    // Citizen: login or sign up (email-based)
+    const users = loadCitizenUsers();
+    if (isSignUp) {
+      if (!name || !email || !password) {
+        setError("Please provide name, email, and password.");
+        return;
+      }
+      const emailLc = email.toLowerCase().trim();
+      const exists = users.some(
+        (u) => (u.email || "").toLowerCase() === emailLc,
+      );
+      if (exists) {
+        setError("Email already registered. Please log in.");
+        return;
+      }
+      const next = [...users, { name: name.trim(), email: emailLc, password }];
+      saveCitizenUsers(next);
+      setRole("citizen");
+      persistCurrentUser({
+        role: "citizen",
+        name: name.trim(),
+        email: emailLc,
+      });
+      navigate("/volunteer/citizen");
+      return;
+    } else {
+      const emailLc = email.toLowerCase().trim();
+      const user = users.find((u) => (u.email || "").toLowerCase() === emailLc);
+      if (!user || user.password !== password) {
+        setError("Invalid credentials. Please check email/password.");
+        return;
+      }
+      setRole("citizen");
+      persistCurrentUser({
+        role: "citizen",
+        name: user.name || "",
+        email: user.email,
+      });
+      navigate("/volunteer/citizen");
+      return;
+    }
   };
 
   return (
@@ -44,12 +122,16 @@ export default function Login() {
           {/* Subtle inner glare effect */}
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-50 pointer-events-none"></div>
 
-          <form onSubmit={handleLogin} className="space-y-6 relative z-20">
+          <form onSubmit={handleSubmit} className="space-y-6 relative z-20">
             {/* Role Selection - Glass Toggles */}
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => setSelectedRole("citizen")}
+                onClick={() => {
+                  setSelectedRole("citizen");
+                  setIsSignUp(false);
+                  setError("");
+                }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all duration-300 group ${
                   selectedRole === "citizen"
                     ? "border-indigo-500/50 bg-indigo-600/20 text-indigo-300 shadow-[inset_0_0_20px_rgba(79,70,229,0.2)]"
@@ -71,7 +153,11 @@ export default function Login() {
 
               <button
                 type="button"
-                onClick={() => setSelectedRole("admin")}
+                onClick={() => {
+                  setSelectedRole("admin");
+                  setIsSignUp(false);
+                  setError("");
+                }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all duration-300 group ${
                   selectedRole === "admin"
                     ? "border-indigo-500/50 bg-indigo-600/20 text-indigo-300 shadow-[inset_0_0_20px_rgba(79,70,229,0.2)]"
@@ -94,30 +180,102 @@ export default function Login() {
 
             {/* Input Fields - Dark transparent inputs */}
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter your username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-500 text-white backdrop-blur-md"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-500 text-white backdrop-blur-md"
-                />
-              </div>
+              {selectedRole === "admin" ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
+                      Admin Username
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter admin username"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-500 text-white backdrop-blur-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-500 text-white backdrop-blur-md"
+                    />
+                  </div>
+                </>
+              ) : isSignUp ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
+                      Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter your name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-500 text-white backdrop-blur-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-500 text-white backdrop-blur-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-500 text-white backdrop-blur-md"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-500 text-white backdrop-blur-md"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-500 text-white backdrop-blur-md"
+                    />
+                  </div>
+                </>
+              )}
+
+              {error && <div className="text-red-400 text-sm">{error}</div>}
             </div>
 
             {/* Submit Button - Glowing accent */}
@@ -125,12 +283,47 @@ export default function Login() {
               type="submit"
               className="w-full bg-indigo-600 text-white font-semibold py-4 rounded-xl shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 hover:shadow-indigo-600/50 active:scale-[0.98] transition-all flex items-center justify-center gap-2 group border border-indigo-500/50"
             >
-              Sign In
+              {selectedRole === "citizen" && isSignUp
+                ? "Create Account"
+                : "Sign In"}
               <ArrowRight
                 size={18}
                 className="group-hover:translate-x-1 transition-transform"
               />
             </button>
+
+            {/* Citizen-only: Sign up / login toggle */}
+            {selectedRole === "citizen" && (
+              <div className="text-center">
+                {!isSignUp ? (
+                  <p className="text-sm text-slate-400">
+                    Don't have an account?{" "}
+                    <span
+                      className="text-indigo-400 font-semibold cursor-pointer hover:text-indigo-300"
+                      onClick={() => {
+                        setIsSignUp(true);
+                        setError("");
+                      }}
+                    >
+                      Sign up
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-400">
+                    Already have an account?{" "}
+                    <span
+                      className="text-indigo-400 font-semibold cursor-pointer hover:text-indigo-300"
+                      onClick={() => {
+                        setIsSignUp(false);
+                        setError("");
+                      }}
+                    >
+                      Log in
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
           </form>
 
           {/* Footer Link */}

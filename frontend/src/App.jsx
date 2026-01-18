@@ -113,7 +113,7 @@ function Layout({ children }) {
         </div>
 
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button
+          {/* <button
             style={{
               background: "#4f46e5",
               color: "#fff",
@@ -142,7 +142,7 @@ function Layout({ children }) {
             }}
           >
             Help
-          </button>
+          </button> */}
         </div>
       </header>
 
