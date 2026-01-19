@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useVolunteer } from "./VolunteerContext.jsx";
 // Professional icons for tracking and impact
 import {
@@ -13,9 +13,14 @@ import {
 } from "lucide-react";
 
 export default function AllocationImpact() {
-  const { requests } = useVolunteer();
+  const { requests, adminUpdate } = useVolunteer();
+  const [suggesting, setSuggesting] = useState({}); // id -> loading bool
+  const [suggestions, setSuggestions] = useState({}); // id -> {nearest, topHigh}
   const allocated = requests.filter(
     (r) => r.status === "Assigned" || r.status === "Completed",
+  );
+  const pending = requests.filter(
+    (r) => r.status === "Approved" || r.status === "Suggested",
   );
 
   // Stats for the Impact Header
@@ -25,6 +30,51 @@ export default function AllocationImpact() {
   const activeAssignments = requests.filter(
     (r) => r.status === "Assigned",
   ).length;
+
+  const fetchSuggestions = async (req) => {
+    try {
+      setSuggesting((p) => ({ ...p, [req.id]: true }));
+      const preferred =
+        req?.details?.preferredDistrict || req?.districtSuggestion || "";
+      const res = await fetch("/api/alloc/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferredDistrict: preferred }),
+      });
+      const data = await res.json();
+      setSuggestions((p) => ({ ...p, [req.id]: data }));
+    } catch (e) {
+      console.error("Suggestion error", e);
+    } finally {
+      setSuggesting((p) => ({ ...p, [req.id]: false }));
+    }
+  };
+
+  const sendSuggestion = (req, district) => {
+    adminUpdate(req.id, {
+      status: "Suggested",
+      notes: `Admin suggested ${district} for higher impact`,
+      adminSuggestedDistrict: district,
+    });
+  };
+
+  const assignPreferred = (req) => {
+    const target =
+      req.details?.preferredDistrict || req.districtSuggestion || "";
+    adminUpdate(req.id, {
+      status: "Assigned",
+      details: { ...req.details, preferredDistrict: target },
+      notes: `Assigned to ${target} as per citizen preference`,
+    });
+  };
+
+  const assignDistrict = (req, district) => {
+    adminUpdate(req.id, {
+      status: "Assigned",
+      details: { ...req.details, preferredDistrict: district },
+      notes: `Assigned to ${district} based on admin allocation`,
+    });
+  };
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
@@ -63,6 +113,153 @@ export default function AllocationImpact() {
               Total Impact Milestones
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Allocation Queue: Approved/Suggested requests */}
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden mb-8">
+        <div className="p-8 border-b border-slate-50 flex justify-between items-center">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900">
+              Allocation Queue
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Verified requests ready for allocation
+            </p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
+                  Request
+                </th>
+                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
+                  Preferred District
+                </th>
+                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
+                  Suggestions
+                </th>
+                <th className="px-8 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em]">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {pending.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="px-8 py-10 text-center text-slate-400 text-sm"
+                  >
+                    No pending requests
+                  </td>
+                </tr>
+              ) : (
+                pending.map((r) => {
+                  const s = suggestions[r.id];
+                  return (
+                    <tr key={r.id} className="group">
+                      <td className="px-8 py-5">
+                        <div className="text-sm font-bold text-slate-900">
+                          #{r.id.split("-")[0]} • {r.type}
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {r.notes}
+                        </div>
+                      </td>
+                      <td className="px-8 py-5 text-slate-700">
+                        {r.details?.preferredDistrict ||
+                          r.districtSuggestion ||
+                          "—"}
+                      </td>
+                      <td className="px-8 py-5">
+                        {!s ? (
+                          <button
+                            onClick={() => fetchSuggestions(r)}
+                            className="px-3 py-1 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                            disabled={suggesting[r.id]}
+                          >
+                            {suggesting[r.id] ? "Loading…" : "Get Suggestions"}
+                          </button>
+                        ) : (
+                          <div className="flex flex-col gap-2">
+                            <div className="text-[10px] uppercase text-slate-400 font-bold">
+                              Nearest by EII
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {s.nearest?.map((d) => (
+                                <span
+                                  key={d.name}
+                                  className="px-2 py-1 text-xs bg-slate-100 rounded-lg text-slate-700 border border-slate-200"
+                                >
+                                  {d.name} • {d.eii?.toFixed?.(2) ?? d.eii}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="text-[10px] uppercase text-slate-400 font-bold mt-2">
+                              High Inequality
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {s.topHigh?.map((d) => (
+                                <div
+                                  key={d.name}
+                                  className="flex items-center gap-2"
+                                >
+                                  <button
+                                    onClick={() => sendSuggestion(r, d.name)}
+                                    className="px-2 py-1 text-xs rounded-lg bg-rose-50 text-rose-700 border border-rose-100 hover:bg-rose-100"
+                                    title="Suggest to citizen"
+                                  >
+                                    {d.name} • {d.eii?.toFixed?.(2) ?? d.eii}
+                                  </button>
+                                  <button
+                                    onClick={() => assignDistrict(r, d.name)}
+                                    className="px-2 py-1 text-xs rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100"
+                                    title="Assign this district"
+                                  >
+                                    Assign
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-8 py-5">
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => assignPreferred(r)}
+                            className="px-3 py-1 text-xs font-bold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
+                          >
+                            Assign Preferred
+                          </button>
+                          {r.status === "Approved" &&
+                          r.adminSuggestedDistrict ? (
+                            <button
+                              onClick={() =>
+                                assignDistrict(r, r.adminSuggestedDistrict)
+                              }
+                              className="px-3 py-1 text-xs font-bold rounded-lg border border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                            >
+                              Assign Suggested ({r.adminSuggestedDistrict})
+                            </button>
+                          ) : null}
+                          {r.status === "Suggested" ? (
+                            <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                              Sent: {r.adminSuggestedDistrict}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

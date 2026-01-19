@@ -28,10 +28,10 @@ const getColor = (val) => {
 };
 
 const getLabel = (val) => {
-  if (val >= 0.75) return "Excellent";
-  if (val >= 0.5) return "Moderate";
-  if (val >= 0.25) return "Poor";
-  return "Critical";
+  if (val >= 0.75) return "Critical";
+  if (val >= 0.5) return "Poor";
+  if (val >= 0.25) return "Moderate";
+  return "Excellent";
 };
 
 const NAME_MAP = {

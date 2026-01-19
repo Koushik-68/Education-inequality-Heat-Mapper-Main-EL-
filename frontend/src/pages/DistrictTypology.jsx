@@ -472,11 +472,11 @@ export default function DistrictTypology() {
               {/* ANALYTICS CHART */}
               <div
                 style={{
-                  background: "rgba(255,255,255,0.02)",
+                  background: "#FFFFFF",
                   padding: 24,
                   borderRadius: 20,
                   border: `1px solid ${COLORS.cardBorder}`,
-                  height: 300,
+                  gridColumn: "1 / -1",
                 }}
               >
                 <div
@@ -498,91 +498,83 @@ export default function DistrictTypology() {
                     DISTRIBUTION MAP
                   </span>
                 </div>
-                <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart
-                    margin={{ top: 10, right: 10, bottom: 20, left: -20 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="rgba(255,255,255,0.05)"
-                      vertical={false}
-                    />
-                    <XAxis
-                      type="number"
-                      dataKey="x"
-                      name="PTR"
-                      stroke={COLORS.muted}
-                      fontSize={12}
-                      tickLine={false}
-                      domain={["dataMin - 5", "dataMax + 5"]}
-                      tickMargin={8}
-                    />
-                    <YAxis
-                      type="number"
-                      dataKey="y"
-                      name="Literacy"
-                      stroke={COLORS.muted}
-                      fontSize={12}
-                      tickLine={false}
-                      domain={["dataMin - 5", "dataMax + 5"]}
-                      tickMargin={8}
-                    />
-                    {/* Control point sizes */}
-                    <ZAxis type="number" dataKey="z" range={[80, 160]} />
-                    <Tooltip content={<CustomTooltip />} />
-                    {/* Constant district points clustered */}
-                    <Scatter data={points} opacity={0.85}>
-                      {points.map((p, idx) => (
-                        <Cell
-                          key={`base-${idx}`}
-                          fill={
-                            [COLORS.blue, COLORS.green, COLORS.red][
-                              clusters[idx] || 0
-                            ]
-                          }
-                        />
-                      ))}
-                    </Scatter>
-                    {/* User scenario point (from sliders) */}
-                    <Scatter
-                      data={[
-                        {
-                          x: inputs.pupil_teacher_ratio,
-                          y: inputs.literacy_rate,
-                          z: 180, // highlight user point a bit larger
-                          gap: inputs.teacher_difference,
-                          name: "Your Scenario",
-                        },
-                      ]}
-                      fill="#FFFFFF"
+                <div style={{ width: "100%", height: 500 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart
+                      margin={{ top: 10, right: 10, bottom: 20, left: -20 }}
                     >
-                      {[
-                        {
-                          x: inputs.pupil_teacher_ratio,
-                          y: inputs.literacy_rate,
-                          z: 180,
-                          gap: inputs.teacher_difference,
-                          name: "Your Scenario",
-                        },
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill="#FFFFFF" />
-                      ))}
-                    </Scatter>
-                  </ScatterChart>
-                </ResponsiveContainer>
-              </div>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="#e5e7eb"
+                        vertical={false}
+                      />
+                      <XAxis
+                        type="number"
+                        dataKey="x"
+                        name="PTR"
+                        stroke={COLORS.muted}
+                        fontSize={12}
+                        tickLine={false}
+                        domain={["dataMin - 5", "dataMax + 5"]}
+                        tickMargin={8}
+                      />
+                      <YAxis
+                        type="number"
+                        dataKey="y"
+                        name="Literacy"
+                        stroke={COLORS.muted}
+                        fontSize={12}
+                        tickLine={false}
+                        domain={["dataMin - 5", "dataMax + 5"]}
+                        tickMargin={8}
+                      />
+                      {/* Control point sizes */}
+                      <ZAxis type="number" dataKey="z" range={[80, 160]} />
+                      <Tooltip content={<CustomTooltip />} />
+                      {/* Constant district points clustered */}
+                      <Scatter data={points} opacity={0.85}>
+                        {points.map((p, idx) => (
+                          <Cell
+                            key={`base-${idx}`}
+                            fill={
+                              [COLORS.blue, COLORS.green, COLORS.red][
+                                clusters[idx] || 0
+                              ]
+                            }
+                          />
+                        ))}
+                      </Scatter>
+                      {/* User scenario point (from sliders) */}
+                      <Scatter
+                        data={[
+                          {
+                            x: inputs.pupil_teacher_ratio,
+                            y: inputs.literacy_rate,
+                            z: 180, // highlight user point a bit larger
+                            gap: inputs.teacher_difference,
+                            name: "Your Scenario",
+                          },
+                        ]}
+                        fill="#000000"
+                      >
+                        {[
+                          {
+                            x: inputs.pupil_teacher_ratio,
+                            y: inputs.literacy_rate,
+                            z: 180,
+                            gap: inputs.teacher_difference,
+                            name: "Your Scenario",
+                          },
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill="#000000" />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
 
-              {/* CONFIDENCE & INSIGHTS */}
-              <div>
-                <div
-                  style={{
-                    background: "rgba(255,255,255,0.02)",
-                    padding: 24,
-                    borderRadius: 20,
-                    border: `1px solid ${COLORS.cardBorder}`,
-                    marginBottom: 24,
-                  }}
-                >
+                {/* MODEL CONFIDENCE BELOW GRAPH */}
+                <div style={{ marginTop: 16 }}>
                   <div
                     style={{
                       display: "flex",
@@ -592,21 +584,21 @@ export default function DistrictTypology() {
                   >
                     <span
                       style={{
-                        color: COLORS.muted,
+                        color: "#6B7280",
                         fontSize: 13,
                         fontWeight: 600,
                       }}
                     >
                       MODEL CONFIDENCE
                     </span>
-                    <span style={{ color: COLORS.text, fontWeight: 700 }}>
+                    <span style={{ color: "#111827", fontWeight: 700 }}>
                       {confidence}%
                     </span>
                   </div>
                   <div
                     style={{
                       height: 6,
-                      background: "rgba(255,255,255,0.05)",
+                      background: "#e5e7eb",
                       borderRadius: 10,
                     }}
                   >
@@ -622,17 +614,11 @@ export default function DistrictTypology() {
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    background: "rgba(255,255,255,0.02)",
-                    padding: 24,
-                    borderRadius: 20,
-                    border: `1px solid ${COLORS.cardBorder}`,
-                  }}
-                >
+                {/* KEY FACTORS BELOW GRAPH */}
+                <div style={{ marginTop: 16 }}>
                   <span
                     style={{
-                      color: COLORS.muted,
+                      color: "#6B7280",
                       fontSize: 13,
                       fontWeight: 600,
                       display: "block",
@@ -655,7 +641,7 @@ export default function DistrictTypology() {
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
-                          color: COLORS.text,
+                          color: "#374151",
                           fontSize: 14,
                         }}
                       >
@@ -665,6 +651,8 @@ export default function DistrictTypology() {
                   </div>
                 </div>
               </div>
+
+              {/* Right column removed */}
             </div>
 
             {/* POLICY RECOMMENDATIONS */}

@@ -8,6 +8,7 @@ const axios = require("axios");
 const { feature: topoFeature } = require("topojson-client");
 const { parse: parseCsv } = require("csv-parse/sync");
 const mlRouter = require("./routes/ml");
+const allocRouter = require("./routes/alloc");
 
 require("dotenv").config({ path: path.resolve(__dirname, "./config.env") });
 
@@ -43,6 +44,7 @@ app.use("/api", express.static(path.join(FRONTEND_ROOT, "api"))); // topojson
 app.use("/data", express.static(path.join(FRONTEND_ROOT, "data")));
 // app.use("/api/ml", predictRouter);
 app.use("/api/ml", mlRouter);
+app.use("/api/alloc", allocRouter);
 
 // data.json
 

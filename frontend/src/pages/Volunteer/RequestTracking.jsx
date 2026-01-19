@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 export default function RequestTracking() {
-  const { requests, updateRequest, cancelRequest, startLoading } =
+  const { requests, updateRequest, cancelRequest, startLoading, adminUpdate } =
     useVolunteer();
   const location = useLocation();
   const lastId = location.state?.lastId;
@@ -117,12 +117,15 @@ export default function RequestTracking() {
 }
 
 function RequestCard({ request, isNew, onEdit, onCancel }) {
+  const { adminUpdate } = useVolunteer();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     preferredDistrict: request.details?.preferredDistrict || "",
     availability: request.details?.availability || "",
   });
   const canEdit = request.status === "Pending";
+  const hasSuggestion =
+    request.status === "Suggested" && request.adminSuggestedDistrict;
   return (
     <div
       className={`group bg-white rounded-[2rem] border-2 transition-all duration-300 overflow-hidden ${
@@ -230,7 +233,7 @@ function RequestCard({ request, isNew, onEdit, onCancel }) {
                         preferredDistrict: e.target.value,
                       }))
                     }
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400"
                   />
                 </div>
                 <div>
@@ -242,7 +245,7 @@ function RequestCard({ request, isNew, onEdit, onCancel }) {
                     onChange={(e) =>
                       setForm((p) => ({ ...p, availability: e.target.value }))
                     }
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder-slate-400"
                   />
                 </div>
                 <div className="flex gap-2">
@@ -267,6 +270,61 @@ function RequestCard({ request, isNew, onEdit, onCancel }) {
           </div>
         )}
 
+        {/* Citizen Acceptance for Admin Suggestion */}
+        {hasSuggestion && (
+          <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-rose-700">
+                Admin suggested focusing in {request.adminSuggestedDistrict}. Do
+                you accept?
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    adminUpdate(request.id, {
+                      status: "Approved",
+                      details: {
+                        ...request.details,
+                        preferredDistrict: request.adminSuggestedDistrict,
+                      },
+                      notes: `Citizen accepted suggestion: ${request.adminSuggestedDistrict}`,
+                    });
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  Accept Suggested
+                </button>
+                <button
+                  onClick={() => {
+                    adminUpdate(request.id, {
+                      status: "Approved",
+                      details: {
+                        ...request.details,
+                        preferredDistrict: request.details?.preferredDistrict,
+                      },
+                      notes: "Citizen kept original preferred district",
+                    });
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-700"
+                >
+                  Keep My Preferable
+                </button>
+                <button
+                  onClick={() => {
+                    adminUpdate(request.id, {
+                      status: "Pending",
+                      notes: "Citizen requested a different district",
+                    });
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white border border-slate-200 text-slate-700"
+                >
+                  Request Another
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer Info */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/80 -mx-8 -mb-8 p-6 mt-6">
           <div className="flex items-start gap-3">
@@ -281,9 +339,7 @@ function RequestCard({ request, isNew, onEdit, onCancel }) {
               </p>
             </div>
           </div>
-          <button className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:gap-4 transition-all">
-            View Full Details <ArrowRight size={14} />
-          </button>
+          {/* Removed unused View Full Details button */}
         </div>
       </div>
     </div>
@@ -293,6 +349,7 @@ function RequestCard({ request, isNew, onEdit, onCancel }) {
 function StatusBadge({ status }) {
   const styles = {
     Pending: "bg-amber-50 text-amber-700 border-amber-200",
+    Suggested: "bg-indigo-50 text-indigo-700 border-indigo-200",
     Approved: "bg-blue-50 text-blue-700 border-blue-200",
     Assigned: "bg-indigo-50 text-indigo-700 border-indigo-200",
     Completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
