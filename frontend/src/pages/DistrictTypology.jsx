@@ -21,6 +21,8 @@ import {
   Info,
   ChevronRight,
   Layout,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -105,6 +107,7 @@ const CustomTooltip = ({ active, payload }) => {
 
 export default function DistrictTypology() {
   const reportRef = useRef();
+  const pdfRef = useRef();
   const [inputs, setInputs] = useState({
     literacy_rate: 75,
     pupil_teacher_ratio: 30,
@@ -219,10 +222,10 @@ export default function DistrictTypology() {
     : 0;
 
   const downloadPDF = async () => {
-    const canvas = await html2canvas(reportRef.current, {
+    const canvas = await html2canvas(pdfRef.current, {
       scale: 2,
       useCORS: true,
-      backgroundColor: "#030712",
+      backgroundColor: "#FFFFFF",
     });
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
@@ -727,6 +730,169 @@ export default function DistrictTypology() {
             >
               <Download size={18} /> Export Technical Report (PDF)
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* OFFSCREEN WHITE-THEMED PDF LAYOUT */}
+      <div
+        ref={pdfRef}
+        style={{
+          position: "fixed",
+          left: -10000,
+          top: 0,
+          width: 800,
+          background: "#FFFFFF",
+          color: "#111827",
+          padding: 24,
+          borderRadius: 16,
+          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+          border: "1px solid #e5e7eb",
+          fontFamily: "'Inter', sans-serif",
+        }}
+      >
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>District Analysis Report</h2>
+          <p style={{ margin: 4, color: "#6B7280", fontSize: 12 }}>
+            Generated on {new Date().toLocaleDateString()}
+          </p>
+        </div>
+
+        {/* Comparison Table: Base vs New with Change */}
+        {(() => {
+          const BASE = { literacy_rate: 75, pupil_teacher_ratio: 30, teacher_difference: 0 };
+          const metrics = [
+            { key: "literacy_rate", label: "Literacy Rate", unit: "%" },
+            { key: "pupil_teacher_ratio", label: "Pupil-Teacher Ratio", unit: "" },
+            { key: "teacher_difference", label: "Teacher Gap", unit: "" },
+          ];
+          return (
+            <div style={{ marginTop: 8 }}>
+              <div style={{
+                marginBottom: 8,
+                color: "#6B7280",
+                fontSize: 12,
+                fontWeight: 600,
+              }}>Factors Summary</div>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: 8, borderBottom: "1px solid #e5e7eb", color: "#374151" }}>Metric</th>
+                    <th style={{ textAlign: "right", padding: 8, borderBottom: "1px solid #e5e7eb", color: "#374151" }}>Base</th>
+                    <th style={{ textAlign: "right", padding: 8, borderBottom: "1px solid #e5e7eb", color: "#374151" }}>New</th>
+                    <th style={{ textAlign: "right", padding: 8, borderBottom: "1px solid #e5e7eb", color: "#374151" }}>Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.map((m) => {
+                    const baseVal = BASE[m.key];
+                    const newVal = inputs[m.key];
+                    const diff = (newVal ?? 0) - (baseVal ?? 0);
+                    const isUp = diff > 0;
+                    const abs = Math.abs(diff).toFixed(m.key === "literacy_rate" ? 1 : 0);
+                    return (
+                      <tr key={m.key}>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6", color: "#111827" }}>{m.label}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6", textAlign: "right", color: "#111827" }}>{baseVal}{m.unit}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6", textAlign: "right", color: "#111827" }}>{newVal}{m.unit}</td>
+                        <td style={{ padding: 8, borderBottom: "1px solid #f3f4f6", textAlign: "right" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: isUp ? "#EF4444" : "#10B981" }}>
+                            {isUp ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+                            {isUp ? "+" : "-"}{abs}{m.unit}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
+
+        {/* Graph: Base vs New */}
+        {(() => {
+          const basePoint = {
+            x: 30,
+            y: 75,
+            z: 140,
+            gap: 0,
+            name: "Base",
+          };
+          const newPoint = {
+            x: inputs.pupil_teacher_ratio,
+            y: inputs.literacy_rate,
+            z: 180,
+            gap: inputs.teacher_difference,
+            name: "New",
+          };
+          const minX = Math.min(basePoint.x, newPoint.x) - 5;
+          const maxX = Math.max(basePoint.x, newPoint.x) + 5;
+          const minY = Math.min(basePoint.y, newPoint.y) - 5;
+          const maxY = Math.max(basePoint.y, newPoint.y) + 5;
+          return (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <span style={{ color: "#6B7280", fontSize: 12, fontWeight: 600 }}>Graph: Base vs New</span>
+                <div style={{ marginLeft: "auto", display: "inline-flex", gap: 12 }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#374151" }}>
+                    <span style={{ width: 10, height: 10, background: "#3B82F6", borderRadius: 999 }} /> Base
+                  </span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#374151" }}>
+                    <span style={{ width: 10, height: 10, background: "#000000", borderRadius: 999 }} /> New
+                  </span>
+                </div>
+              </div>
+              <div style={{ width: "100%", height: 280, border: "1px solid #e5e7eb", borderRadius: 12 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 10, right: 10, bottom: 20, left: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                    <XAxis type="number" dataKey="x" name="PTR" stroke="#6B7280" fontSize={11} tickLine={false} domain={[minX, maxX]} tickMargin={8} />
+                    <YAxis type="number" dataKey="y" name="Literacy" stroke="#6B7280" fontSize={11} tickLine={false} domain={[minY, maxY]} tickMargin={8} />
+                    <ZAxis type="number" dataKey="z" range={[100, 180]} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Scatter data={[basePoint]} opacity={0.95}>
+                      <Cell fill="#3B82F6" />
+                    </Scatter>
+                    <Scatter data={[newPoint]} opacity={0.95}>
+                      <Cell fill="#000000" />
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Model Confidence */}
+        {(() => {
+          const confColor = result ? colorMap[result.color] : COLORS.primary;
+          const confVal = Math.max(
+            60,
+            Math.min(
+              95,
+              100 - Math.abs(inputs.pupil_teacher_ratio - 30) - Math.abs(inputs.literacy_rate - 75) / 2,
+            ),
+          );
+          return (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ color: "#6B7280", fontSize: 12, fontWeight: 600 }}>Model Confidence</span>
+                <span style={{ color: "#111827", fontWeight: 700 }}>{confVal}%</span>
+              </div>
+              <div style={{ height: 6, background: "#e5e7eb", borderRadius: 10 }}>
+                <div style={{ width: `${confVal}%`, height: "100%", background: confColor, borderRadius: 10 }} />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Classification Summary (optional) */}
+        {result && (
+          <div style={{ marginTop: 16, paddingTop: 8, borderTop: "1px solid #f3f4f6" }}>
+            <span style={{ color: "#6B7280", fontSize: 12, fontWeight: 600 }}>Classification</span>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginTop: 4 }}>{result.label}</div>
           </div>
         )}
       </div>
