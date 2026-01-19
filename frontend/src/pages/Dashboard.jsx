@@ -21,10 +21,10 @@ const COLORS = {
 };
 
 const getColor = (val) => {
-  if (val >= 0.75) return "#006400";
-  if (val >= 0.5) return "#FFD700";
-  if (val >= 0.25) return "#FF8C00";
-  return "#8B0000";
+  if (val >= 0.75) return "#8B0000"; // Critical (Red)
+  if (val >= 0.5) return "#FF8C00"; // Poor (Orange)
+  if (val >= 0.25) return "#FFD700"; // Moderate (Yellow)
+  return "#006400";
 };
 
 const getLabel = (val) => {

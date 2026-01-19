@@ -1,10 +1,12 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import axios from "axios";
 import { getDistrictTypology } from "./services/mlService";
 import {
   ScatterChart,
   Scatter,
   XAxis,
   YAxis,
+  ZAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
@@ -67,6 +69,11 @@ const POLICY = {
 /* ---------------- CUSTOM COMPONENTS ---------------- */
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
+    const p = payload[0]?.payload || {};
+    const name = p.name || "Your Scenario";
+    const ptr = p.x;
+    const lit = p.y;
+    const gap = p.gap;
     return (
       <div
         style={{
@@ -75,16 +82,20 @@ const CustomTooltip = ({ active, payload }) => {
           padding: "10px 14px",
           borderRadius: "8px",
           boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.3)",
+          minWidth: 180,
         }}
       >
         <p style={{ margin: 0, color: COLORS.muted, fontSize: 12 }}>
-          Current District
+          District: {name}
         </p>
         <p style={{ margin: 0, color: "#FFF", fontWeight: "bold" }}>
-          PTR: {payload[0].value}
+          PTR: {ptr}
         </p>
         <p style={{ margin: 0, color: "#FFF", fontWeight: "bold" }}>
-          Literacy: {payload[1].value}%
+          Literacy: {lit}%
+        </p>
+        <p style={{ margin: 0, color: "#FFF", fontWeight: "bold" }}>
+          Gap: {gap}
         </p>
       </div>
     );
@@ -101,6 +112,87 @@ export default function DistrictTypology() {
   });
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [points, setPoints] = useState([]); // constant district points
+  const [clusters, setClusters] = useState([]); // cluster assignments
+
+  // Simple k-means clustering on (PTR, Literacy, Gap)
+  const kmeans = (data, k = 3, maxIter = 50) => {
+    if (!data.length) return [];
+    // Initialize centroids with first k points
+    let centroids = data.slice(0, k).map((p) => [p.x, p.y, p.gap]);
+    let assignments = new Array(data.length).fill(0);
+
+    const dist = (a, b) => {
+      const dx = a[0] - b[0];
+      const dy = a[1] - b[1];
+      const dz = a[2] - b[2];
+      return dx * dx + dy * dy + dz * dz;
+    };
+
+    for (let iter = 0; iter < maxIter; iter++) {
+      // Assign
+      let changed = false;
+      for (let i = 0; i < data.length; i++) {
+        const v = [data[i].x, data[i].y, data[i].gap];
+        let best = 0;
+        let bestD = Infinity;
+        for (let c = 0; c < k; c++) {
+          const d = dist(v, centroids[c]);
+          if (d < bestD) {
+            bestD = d;
+            best = c;
+          }
+        }
+        if (assignments[i] !== best) {
+          assignments[i] = best;
+          changed = true;
+        }
+      }
+      // Recompute centroids
+      const sums = Array.from({ length: k }, () => [0, 0, 0, 0]);
+      for (let i = 0; i < data.length; i++) {
+        const c = assignments[i];
+        sums[c][0] += data[i].x;
+        sums[c][1] += data[i].y;
+        sums[c][2] += data[i].gap;
+        sums[c][3] += 1;
+      }
+      for (let c = 0; c < k; c++) {
+        const count = sums[c][3] || 1;
+        centroids[c] = [
+          sums[c][0] / count,
+          sums[c][1] / count,
+          sums[c][2] / count,
+        ];
+      }
+      if (!changed) break;
+    }
+    return assignments;
+  };
+
+  // Load district features once; keep constant points
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await axios.get("/api/ml/district-features");
+        const data = res.data || {};
+        const pts = Object.entries(data).map(([name, f]) => ({
+          name,
+          x: Number(f.pupil_teacher_ratio) || 0,
+          y: Number(f.literacy_rate) || 0,
+          gap: Number(f.teacher_difference) || 0,
+          z: 120, // larger base point size for readability
+        }));
+        setPoints(pts);
+        const assigns = kmeans(pts, 3);
+        setClusters(assigns);
+      } catch (e) {
+        console.error("Failed to load district features", e);
+      }
+    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSliderChange = (e) => {
     const { name, value } = e.target;
@@ -422,6 +514,8 @@ export default function DistrictTypology() {
                       stroke={COLORS.muted}
                       fontSize={12}
                       tickLine={false}
+                      domain={["dataMin - 5", "dataMax + 5"]}
+                      tickMargin={8}
                     />
                     <YAxis
                       type="number"
@@ -430,27 +524,48 @@ export default function DistrictTypology() {
                       stroke={COLORS.muted}
                       fontSize={12}
                       tickLine={false}
+                      domain={["dataMin - 5", "dataMax + 5"]}
+                      tickMargin={8}
                     />
+                    {/* Control point sizes */}
+                    <ZAxis type="number" dataKey="z" range={[80, 160]} />
                     <Tooltip content={<CustomTooltip />} />
+                    {/* Constant district points clustered */}
+                    <Scatter data={points} opacity={0.85}>
+                      {points.map((p, idx) => (
+                        <Cell
+                          key={`base-${idx}`}
+                          fill={
+                            [COLORS.blue, COLORS.green, COLORS.red][
+                              clusters[idx] || 0
+                            ]
+                          }
+                        />
+                      ))}
+                    </Scatter>
+                    {/* User scenario point (from sliders) */}
                     <Scatter
                       data={[
                         {
                           x: inputs.pupil_teacher_ratio,
                           y: inputs.literacy_rate,
+                          z: 180, // highlight user point a bit larger
+                          gap: inputs.teacher_difference,
+                          name: "Your Scenario",
                         },
                       ]}
-                      fill={colorMap[result.color]}
+                      fill="#FFFFFF"
                     >
                       {[
                         {
                           x: inputs.pupil_teacher_ratio,
                           y: inputs.literacy_rate,
+                          z: 180,
+                          gap: inputs.teacher_difference,
+                          name: "Your Scenario",
                         },
                       ].map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={colorMap[result.color]}
-                        />
+                        <Cell key={`cell-${index}`} fill="#FFFFFF" />
                       ))}
                     </Scatter>
                   </ScatterChart>

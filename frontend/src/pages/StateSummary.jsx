@@ -53,17 +53,19 @@ function canonicalName(name) {
 }
 
 function getColor(val) {
-  if (val >= 0.75) return "#006400"; // Excellent (Dark Green)
-  if (val >= 0.5) return "#FFD700"; // Moderate (Yellow)
-  if (val >= 0.25) return "#FF8C00"; // Poor (Orange)
-  return "#8B0000"; // Critical (Red)
+  // Lower inequality (better) should be green; higher should be red
+  if (val >= 0.75) return "#8B0000"; // Critical (Red)
+  if (val >= 0.5) return "#FF8C00"; // Poor (Orange)
+  if (val >= 0.25) return "#FFD700"; // Moderate (Yellow)
+  return "#006400"; // Excellent (Dark Green)
 }
 
 function getLabel(val) {
-  if (val >= 0.75) return "Excellent";
-  if (val >= 0.5) return "Moderate";
-  if (val >= 0.25) return "Poor";
-  return "Critical";
+  // Labels follow the same reversed severity mapping
+  if (val >= 0.75) return "Critical";
+  if (val >= 0.5) return "Poor";
+  if (val >= 0.25) return "Moderate";
+  return "Excellent";
 }
 
 /* =======================
@@ -142,6 +144,31 @@ export default function StateSummary() {
   const reportRef = useRef(null);
   const [showReport, setShowReport] = useState(false);
 
+  // Sync sliders to selected district's baseline features
+  const setDistrictAndInputs = (name, sourcePreds) => {
+    setSelectedDistrict(name);
+    try {
+      const key = canonicalName(name);
+      const store = sourcePreds || districtPred || {};
+      const f = store[key]?.features || baselinePred[key]?.features || null;
+      if (f) {
+        setMlInput({
+          population_lakhs:
+            Number(f.population_lakhs) ?? defaultInput.population_lakhs,
+          literacy_rate: Number(f.literacy_rate) ?? defaultInput.literacy_rate,
+          pupil_teacher_ratio:
+            Number(f.pupil_teacher_ratio) ?? defaultInput.pupil_teacher_ratio,
+          teacher_difference:
+            Number(f.teacher_difference) ?? defaultInput.teacher_difference,
+        });
+      } else {
+        setMlInput(defaultInput);
+      }
+    } catch (_e) {
+      setMlInput(defaultInput);
+    }
+  };
+
   /* Load data */
   useEffect(() => {
     const load = async () => {
@@ -176,7 +203,8 @@ export default function StateSummary() {
 
       const firstName =
         (list[0] && list[0].name) || Object.keys(preds)[0] || "";
-      setSelectedDistrict(firstName);
+      // Initialize selection and sliders from district features
+      setDistrictAndInputs(firstName, preds);
 
       setLoading(false);
     };
@@ -399,9 +427,9 @@ export default function StateSummary() {
                          ${updatedBadge}Status: ${getLabel(eii)} ${updatedInfo}${details}`,
                       );
 
-                      // Click to select and emphasize the district
+                      // Click to select and sync sliders to district values
                       layer.on("click", () => {
-                        setSelectedDistrict(name);
+                        setDistrictAndInputs(name);
                         try {
                           layer.bringToFront();
                         } catch (e) {}
@@ -619,9 +647,9 @@ export default function StateSummary() {
             const deltaVal = hasNumbers ? currEII - baseEII : 0;
             const pctVal =
               hasNumbers && baseEII !== 0 ? (deltaVal / baseEII) * 100 : null;
-            // Interpret EII: higher is better (moving toward Excellent)
-            const improved = hasNumbers && deltaVal > 0;
-            const worsened = hasNumbers && deltaVal < 0;
+            // Interpret EII: lower is better (less inequality)
+            const improved = hasNumbers && deltaVal < 0;
+            const worsened = hasNumbers && deltaVal > 0;
             const changedLabel = hasNumbers ? baseLabel !== currLabel : false;
 
             const chipColor = improved
@@ -817,7 +845,7 @@ export default function StateSummary() {
               </label>
               <select
                 value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
+                onChange={(e) => setDistrictAndInputs(e.target.value)}
                 style={{
                   width: "100%",
                   padding: "10px 12px",
@@ -829,7 +857,11 @@ export default function StateSummary() {
                 }}
               >
                 {districts.map((d) => (
-                  <option key={d.id} value={d.name}>
+                  <option
+                    key={d.id}
+                    value={d.name}
+                    style={{ color: "#111827", background: "#ffffff" }}
+                  >
                     {d.name}
                   </option>
                 ))}

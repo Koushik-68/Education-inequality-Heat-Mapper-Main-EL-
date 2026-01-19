@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 // --- Icons (Keeping your existing SVG logic) ---
 const IconHome = (props) => (
@@ -77,8 +78,8 @@ const IconVolunteer = (props) => (
 
 function SidebarButton({ label, active, href, icon }) {
   return (
-    <a
-      href={href}
+    <Link
+      to={href}
       className={`flex items-center justify-between px-5 py-3.5 rounded-2xl text-sm font-semibold transition-all duration-300 group
       ${
         active
@@ -98,7 +99,7 @@ function SidebarButton({ label, active, href, icon }) {
       {active && (
         <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,1)]" />
       )}
-    </a>
+    </Link>
   );
 }
 

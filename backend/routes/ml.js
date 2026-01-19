@@ -1,5 +1,7 @@
 const express = require("express");
 const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
 const router = express.Router();
 
@@ -64,6 +66,29 @@ router.post("/district-typology", async (req, res) => {
   } catch (error) {
     console.error(error.message);
     res.status(500).json({ error: "District typology failed" });
+  }
+});
+
+// -------------------------
+// Serve district features from local JSON
+// -------------------------
+router.get("/district-features", async (req, res) => {
+  try {
+    const featuresPath = path.resolve(
+      __dirname,
+      "../../ml-service/district_features.json",
+    );
+    if (!fs.existsSync(featuresPath)) {
+      return res
+        .status(404)
+        .json({ error: "district_features.json not found" });
+    }
+    const text = fs.readFileSync(featuresPath, "utf-8");
+    const data = JSON.parse(text);
+    res.json(data);
+  } catch (error) {
+    console.error("/district-features error:", error.message);
+    res.status(500).json({ error: "Failed to read district features" });
   }
 });
 
