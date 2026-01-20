@@ -21,6 +21,7 @@ export default function RequestVerification() {
     subject: "",
     mode: "",
   });
+  const [preview, setPreview] = useState({ open: false, src: null, title: "" });
   const pendingAll = useMemo(
     () => requests.filter((r) => r.status === "Pending"),
     [requests],
@@ -207,6 +208,16 @@ export default function RequestVerification() {
                   </h4>
                   <div className="grid grid-cols-2 gap-6">
                     <DetailItem
+                      label="Volunteer Name"
+                      value={selected.details?.volunteerName || "N/A"}
+                      icon={<ClipboardList size={16} />}
+                    />
+                    <DetailItem
+                      label="Phone"
+                      value={selected.details?.phone || "N/A"}
+                      icon={<ClipboardList size={16} />}
+                    />
+                    <DetailItem
                       label="Subject / Item"
                       value={
                         selected.details?.subject ||
@@ -226,6 +237,31 @@ export default function RequestVerification() {
                       label="Mode"
                       value={selected.details?.mode || "-"}
                       icon={<ClipboardList size={16} />}
+                    />
+                  </div>
+                </section>
+
+                {/* Identity Proofs */}
+                <section>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
+                    Identity Proofs
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <ProofCard
+                      title="Aadhar Card"
+                      dataUrl={selected.details?.aadharProof}
+                      fileName={selected.details?.aadharProofName}
+                      onOpen={(src, title) =>
+                        setPreview({ open: true, src, title })
+                      }
+                    />
+                    <ProofCard
+                      title="Voter ID"
+                      dataUrl={selected.details?.voterProof}
+                      fileName={selected.details?.voterProofName}
+                      onOpen={(src, title) =>
+                        setPreview({ open: true, src, title })
+                      }
                     />
                   </div>
                 </section>
@@ -269,18 +305,48 @@ export default function RequestVerification() {
                   >
                     Approve
                   </button>
-                  <button
+                  {/* <button
                     onClick={() => handleAction("assign")}
                     className="px-8 py-3 bg-emerald-600 text-white rounded-2xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center gap-2"
                   >
                     <UserPlus size={18} /> Assign Now
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {preview.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl w-[92vw] md:w-[80vw]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+              <div className="text-sm font-semibold text-slate-700 truncate pr-6">
+                {preview.title || "Preview"}
+              </div>
+              <button
+                onClick={() =>
+                  setPreview({ open: false, src: null, title: "" })
+                }
+                className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold"
+                aria-label="Close preview"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4">
+              {/* Use object-contain to avoid cropping and keep aspect ratio */}
+              <img
+                src={preview.src || ""}
+                alt={preview.title || "preview"}
+                className="w-full max-h-[78vh] object-contain rounded-xl"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -294,6 +360,66 @@ function DetailItem({ label, value, icon }) {
         {label}
       </div>
       <div className="text-slate-800 font-bold">{value}</div>
+    </div>
+  );
+}
+
+function ProofCard({ title, dataUrl, fileName, onOpen = () => {} }) {
+  const isPdf =
+    typeof dataUrl === "string" && dataUrl.startsWith("data:application/pdf");
+  const isImage =
+    typeof dataUrl === "string" && dataUrl.startsWith("data:image/");
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-4">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+        {title}
+      </div>
+      {!dataUrl ? (
+        <div className="text-sm text-slate-400">No file uploaded</div>
+      ) : isPdf ? (
+        <a
+          href={dataUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 text-indigo-600 font-semibold hover:underline"
+        >
+          Open PDF {fileName ? `(${fileName})` : ""}
+        </a>
+      ) : isImage ? (
+        <div>
+          <img
+            src={dataUrl}
+            alt={fileName || title}
+            onClick={() => onOpen(dataUrl, fileName || title)}
+            className="max-h-56 w-full rounded-xl border border-slate-200 object-contain cursor-zoom-in"
+            title="Click to preview"
+          />
+          <div className="flex items-center justify-between mt-2">
+            {fileName ? (
+              <div className="text-xs text-slate-500 truncate pr-2">
+                {fileName}
+              </div>
+            ) : (
+              <span className="text-xs text-slate-400">Image</span>
+            )}
+            <button
+              onClick={() => onOpen(dataUrl, fileName || title)}
+              className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800"
+            >
+              View
+            </button>
+          </div>
+        </div>
+      ) : (
+        <a
+          href={dataUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 text-indigo-600 font-semibold hover:underline"
+        >
+          Open File {fileName ? `(${fileName})` : ""}
+        </a>
+      )}
     </div>
   );
 }

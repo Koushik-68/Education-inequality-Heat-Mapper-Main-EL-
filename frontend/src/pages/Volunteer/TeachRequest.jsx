@@ -15,12 +15,18 @@ export default function TeachRequest() {
   const navigate = useNavigate();
   const { submitTeach, profile, setProfile, startLoading } = useVolunteer();
   const [form, setForm] = useState({
+    volunteerName: "",
+    phone: "",
     subject: "",
     mode: "offline",
     availability: "",
     myDistrict: "",
     preferredDistrict: "",
     experience: "",
+    aadharProof: null,
+    aadharProofName: "",
+    voterProof: null,
+    voterProofName: "",
   });
 
   const suggested = suggestLabel(form);
@@ -44,6 +50,25 @@ export default function TeachRequest() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFile = async (e) => {
+    const { name, files } = e.target;
+    const file = files && files[0];
+    if (!file) return;
+    const toDataUrl = (f) =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(f);
+      });
+    const dataUrl = await toDataUrl(file);
+    setForm((prev) => ({
+      ...prev,
+      [name]: dataUrl,
+      [`${name}Name`]: file.name,
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -101,6 +126,36 @@ export default function TeachRequest() {
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 md:p-10 space-y-8">
+          {/* Section 0: Identity */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1">
+                Full Name
+              </label>
+              <input
+                name="volunteerName"
+                placeholder="Your full name"
+                value={form.volunteerName}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1">
+                Phone Number
+              </label>
+              <input
+                name="phone"
+                placeholder="e.g. 98765 43210"
+                value={form.phone}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all"
+                pattern="[0-9\s+()-]{7,15}"
+                required
+              />
+            </div>
+          </div>
           {/* Section 1: Core Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -237,6 +292,44 @@ export default function TeachRequest() {
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all resize-none"
             />
+          </div>
+
+          {/* Section 3b: Identity Proofs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1">
+                Aadhar Card (PDF/Image)
+              </label>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                name="aadharProof"
+                onChange={handleFile}
+                className="w-full px-4 py-2 rounded-2xl border border-slate-200 bg-white text-slate-900 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all"
+              />
+              {form.aadharProofName && (
+                <div className="text-xs text-slate-500 ml-1">
+                  Selected: {form.aadharProofName}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 ml-1">
+                Voter ID (PDF/Image)
+              </label>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                name="voterProof"
+                onChange={handleFile}
+                className="w-full px-4 py-2 rounded-2xl border border-slate-200 bg-white text-slate-900 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none transition-all"
+              />
+              {form.voterProofName && (
+                <div className="text-xs text-slate-500 ml-1">
+                  Selected: {form.voterProofName}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ML Insight Component */}

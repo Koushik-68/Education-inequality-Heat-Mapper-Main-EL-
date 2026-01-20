@@ -17,7 +17,7 @@ const COLORS = {
   low: "#16a34a",
   medium: "#FF8C00",
   high: "#8B0000",
-  default: "#f8fafc",
+  default: "#16a34a",
 };
 
 const getColor = (val) => {
@@ -117,15 +117,47 @@ export default function Dashboard() {
     let cancelled = false;
     const fetchAll = async () => {
       try {
-        const [gRes, mlRes] = await Promise.all([
-          axios.get(GEOJSON_URL),
-          axios.post("/api/ml/predict-district-wise"),
-        ]);
+        const [gRes] = await Promise.all([axios.get(GEOJSON_URL)]);
         if (cancelled) return;
         const topo = gRes.data;
         const objectKey = Object.keys(topo.objects)[0];
         const geoJson = topoFeature(topo, topo.objects[objectKey]);
         setGeo(geoJson);
+
+        // Try temporary override first
+        try {
+          const statusRes = await axios.get("/api/upload/temp-data/status");
+          if (statusRes.data?.active) {
+            const dataRes = await axios.get("/api/data");
+            const districtsMap = dataRes.data?.districts || {};
+            const entries = Object.entries(districtsMap);
+            const computed = {};
+            for (const [rawName, f] of entries) {
+              const name = canonicalName(rawName);
+              const payload = {
+                population_lakhs: Number(f.population_lakhs ?? 0),
+                literacy_rate: Number(f.literacy_rate ?? 0),
+                pupil_teacher_ratio: Number(f.pupil_teacher_ratio ?? 0),
+                teacher_difference: Number(f.teacher_difference ?? 0),
+              };
+              try {
+                const pr = await axios.post(
+                  "/api/ml/predict-district",
+                  payload,
+                );
+                const eii = pr.data?.inequality_index ?? pr.data?.EII ?? 0;
+                computed[name] = { inequality_index: eii, features: payload };
+              } catch {
+                computed[name] = { inequality_index: 0, features: payload };
+              }
+            }
+            setDistrictData(computed);
+            return;
+          }
+        } catch {}
+
+        // Fallback to ML baseline
+        const mlRes = await axios.post("/api/ml/predict-district-wise");
         const predsRaw = mlRes.data?.district_predictions || {};
         const preds = Object.keys(predsRaw).reduce((acc, k) => {
           const key = canonicalName(k);

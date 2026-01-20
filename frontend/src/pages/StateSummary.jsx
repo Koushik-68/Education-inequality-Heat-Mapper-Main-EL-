@@ -19,7 +19,7 @@ import "leaflet/dist/leaflet.css";
    CONFIG
 ======================= */
 const GEOJSON_URL = "/api/karnataka-districts.topojson";
-const DATA_URL = "/data/data.json";
+const DATA_URL = "/data/data.json"; // fallback only
 const STATE_CODE = "KA";
 
 /* =======================
@@ -172,11 +172,7 @@ export default function StateSummary() {
   /* Load data */
   useEffect(() => {
     const load = async () => {
-      const [gRes, dRes, mlRes] = await Promise.all([
-        axios.get(GEOJSON_URL),
-        axios.get(DATA_URL),
-        axios.post("/api/ml/predict-district-wise"),
-      ]);
+      const [gRes] = await Promise.all([axios.get(GEOJSON_URL)]);
 
       let geoJson = gRes.data;
       if (geoJson.objects) {
@@ -185,27 +181,60 @@ export default function StateSummary() {
           geoJson.objects[Object.keys(geoJson.objects)[0]],
         );
       }
-
       setGeo(geoJson);
-
-      // ✅ FIXED LINE
       const list = extractDistrictNames(geoJson);
       setDistricts(list);
 
+      try {
+        // Check if a temporary override is active
+        const statusRes = await axios.get("/api/upload/temp-data/status");
+        const active = !!statusRes.data?.active;
+        if (active) {
+          // Get override districts and compute EII per district via ML
+          const dataRes = await axios.get("/api/data");
+          const districtsMap = dataRes.data?.districts || {};
+          const entries = Object.entries(districtsMap);
+          const computed = {};
+          for (const [rawName, f] of entries) {
+            const name = canonicalName(rawName);
+            const payload = {
+              population_lakhs: Number(f.population_lakhs ?? 0),
+              literacy_rate: Number(f.literacy_rate ?? 0),
+              pupil_teacher_ratio: Number(f.pupil_teacher_ratio ?? 0),
+              teacher_difference: Number(f.teacher_difference ?? 0),
+            };
+            try {
+              const pr = await axios.post("/api/ml/predict-district", payload);
+              const eii = pr.data?.inequality_index ?? pr.data?.EII ?? 0;
+              computed[name] = { inequality_index: eii, features: payload };
+            } catch (e) {
+              computed[name] = { inequality_index: 0, features: payload };
+            }
+          }
+          setDistrictPred(computed);
+          setBaselinePred(computed);
+          const firstName =
+            (list[0] && list[0].name) || Object.keys(computed)[0] || "";
+          setDistrictAndInputs(firstName, computed);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        // ignore and fall back to ML baseline
+      }
+
+      // Fallback: use ML district-wise baseline
+      const mlRes = await axios.post("/api/ml/predict-district-wise");
       const predsRaw = mlRes.data?.district_predictions || {};
-      // Re-key predictions by canonical ML names for consistent lookups
       const preds = Object.keys(predsRaw).reduce((acc, k) => {
         acc[canonicalName(k)] = predsRaw[k];
         return acc;
       }, {});
       setDistrictPred(preds);
       setBaselinePred(preds);
-
       const firstName =
         (list[0] && list[0].name) || Object.keys(preds)[0] || "";
-      // Initialize selection and sliders from district features
       setDistrictAndInputs(firstName, preds);
-
       setLoading(false);
     };
 

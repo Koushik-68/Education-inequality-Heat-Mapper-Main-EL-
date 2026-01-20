@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import axios from "axios";
 
 // -----------------------------------------------------------------------------
@@ -111,11 +111,28 @@ const App = () => {
     message: "Ready to upload data.",
   });
   const [isDragging, setIsDragging] = useState(false);
+  const [overrideStatus, setOverrideStatus] = useState({
+    active: false,
+    rows: 0,
+  });
 
   // Constants for styling
   const primaryColor = "text-indigo-600";
   const primaryBg = "bg-indigo-600 hover:bg-indigo-700";
   const accentColor = "bg-emerald-500 hover:bg-emerald-600";
+  // Check temporary override status
+  const refreshOverride = useCallback(async () => {
+    try {
+      const res = await axios.get("/api/upload/temp-data/status");
+      setOverrideStatus(res.data || { active: false });
+    } catch {
+      setOverrideStatus({ active: false });
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshOverride();
+  }, [refreshOverride]);
 
   // Helper function to handle file processing and preview generation
   const processFile = useCallback((selectedFile) => {
@@ -148,7 +165,7 @@ const App = () => {
           const content = JSON.stringify(json, null, 2);
           setPreview(
             content.slice(0, 3000) +
-              (content.length > 3000 ? "...\n\n[Truncated for brevity]" : "")
+              (content.length > 3000 ? "...\n\n[Truncated for brevity]" : ""),
           );
         } catch {
           setPreview("Invalid JSON format. Check syntax.");
@@ -237,10 +254,29 @@ const App = () => {
         message: "✅ File uploaded successfully! Data is now processing.",
       });
       console.log("UPLOAD RESPONSE → ", res.data);
+      // Refresh temporary override status
+      refreshOverride();
     } catch (err) {
       setStatus({
         type: "error",
         message: "❌ Upload failed. Check console for details.",
+      });
+      console.error(err);
+    }
+  };
+
+  const clearOverride = async () => {
+    try {
+      await axios.delete("/api/upload/temp-data");
+      setStatus({
+        type: "info",
+        message: "🧹 Temporary data override removed.",
+      });
+      refreshOverride();
+    } catch (err) {
+      setStatus({
+        type: "error",
+        message: "❌ Failed to remove temporary override.",
       });
       console.error(err);
     }
@@ -434,6 +470,34 @@ const App = () => {
             />
             <div className="text-sm font-medium">{status.message}</div>
           </div>
+        </div>
+
+        {/* TEMPORARY OVERRIDE STATUS & CLEAR */}
+        <div className="mt-6 bg-indigo-50/50 border border-indigo-100 rounded-lg p-4 flex items-center justify-between">
+          <div className="text-sm text-slate-700">
+            {overrideStatus.active ? (
+              <>
+                <span className="font-bold text-indigo-700">
+                  Temporary data override is active.
+                </span>
+                <span className="ml-2 text-slate-600">
+                  Rows: {overrideStatus.rows}
+                </span>
+              </>
+            ) : (
+              <span className="text-slate-500">
+                No temporary override is active.
+              </span>
+            )}
+          </div>
+          {overrideStatus.active && (
+            <button
+              onClick={clearOverride}
+              className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-800"
+            >
+              Remove Uploaded Data
+            </button>
+          )}
         </div>
       </div>
     </div>

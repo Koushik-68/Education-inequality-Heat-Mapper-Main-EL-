@@ -22,6 +22,9 @@ const predictRouter = require("./routes/mlProxy");
 const app = express();
 const port = process.env.PORT || 5000;
 
+// Temporary data override store (e.g., from CSV upload)
+let TEMP_DATA_OVERRIDE = null; // { type: 'csv', rows: [...], createdAt }
+
 /* -------------------------
    DB Connect
 ------------------------- */
@@ -111,41 +114,11 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     const text = buffer.toString("utf-8");
 
-    /* CSV Upload */
+    /* CSV Upload (Temporary Override) */
     if (fileType === "csv") {
       const rows = parseCsv(text, { columns: true, skip_empty_lines: true });
-
-      let upserts = 0;
-      for (const r of rows) {
-        const code = (
-          r.code ||
-          r.STATE_CODE ||
-          r.state_code ||
-          r.state ||
-          r.STATE ||
-          ""
-        ).toString();
-
-        const name = (r.name || r.NAME || "").toString();
-        const score = Number(r.score ?? r.inequality_score ?? 0);
-
-        if (code || name) {
-          await State.findOneAndUpdate(
-            { $or: [{ code }, { name }] },
-            {
-              $set: {
-                code: code || undefined,
-                name: name || undefined,
-                score: Number.isFinite(score) ? score : 0,
-              },
-            },
-            { upsert: true },
-          );
-          upserts++;
-        }
-      }
-
-      return res.json({ ok: true, rows: rows.length, upserts });
+      TEMP_DATA_OVERRIDE = { type: "csv", rows, createdAt: Date.now() };
+      return res.json({ ok: true, rows: rows.length, temporaryOverride: true });
     }
 
     /* GeoJSON Upload */
@@ -196,6 +169,23 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 ------------------------- */
 app.get("/api/data", async (req, res) => {
   try {
+    // If there's a temporary override (e.g., uploaded CSV), serve it first
+    if (TEMP_DATA_OVERRIDE && TEMP_DATA_OVERRIDE.type === "csv") {
+      const rows = TEMP_DATA_OVERRIDE.rows || [];
+      const districts = rows.reduce((acc, r) => {
+        const key = (r.district_name || r.district || r.name || "").toString();
+        if (!key) return acc;
+        acc[key] = {
+          population_lakhs: Number(r.population_lakhs ?? r.population ?? 0),
+          literacy_rate: Number(r.literacy_rate ?? 0),
+          pupil_teacher_ratio: Number(r.pupil_teacher_ratio ?? 0),
+          teacher_difference: Number(r.teacher_difference ?? 0),
+        };
+        return acc;
+      }, {});
+      return res.json({ states: {}, districts });
+    }
+
     const states = await State.find({}).lean();
 
     if (states.length) {
@@ -221,6 +211,24 @@ app.get("/api/data", async (req, res) => {
     console.error("/api/data error:", err);
     res.status(500).json({ error: "Failed to load data" });
   }
+});
+
+/* -------------------------
+   Temporary Override Controls
+------------------------- */
+app.get("/api/upload/temp-data/status", (req, res) => {
+  if (!TEMP_DATA_OVERRIDE) return res.json({ active: false });
+  res.json({
+    active: true,
+    type: TEMP_DATA_OVERRIDE.type,
+    rows: TEMP_DATA_OVERRIDE.rows?.length || 0,
+    createdAt: TEMP_DATA_OVERRIDE.createdAt,
+  });
+});
+
+app.delete("/api/upload/temp-data", (req, res) => {
+  TEMP_DATA_OVERRIDE = null;
+  res.json({ ok: true, cleared: true });
 });
 
 /* -------------------------
