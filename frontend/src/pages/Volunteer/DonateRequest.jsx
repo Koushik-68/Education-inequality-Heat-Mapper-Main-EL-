@@ -96,7 +96,7 @@ export default function DonateRequest() {
                 value={form.value}
                 onChange={handleChange}
                 placeholder="e.g. 50 Sets or ₹10,000"
-                className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all placeholder:text-slate-400"
+                className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-900 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-50 outline-none transition-all placeholder:text-slate-400"
               />
             </div>
 

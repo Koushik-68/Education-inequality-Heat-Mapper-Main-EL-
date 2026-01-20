@@ -4,6 +4,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import axios from "axios";
 import { feature as topoFeature } from "topojson-client";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 /* -------------------------
    Original Config Styles
@@ -108,8 +110,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [districtBounds, setDistrictBounds] = useState(null);
+  const [generating, setGenerating] = useState(false);
 
   const mapRef = useRef(null);
+  const mapShotRef = useRef(null);
   const INITIAL_CENTER = [15.3173, 75.7139];
   const INITIAL_ZOOM = 6;
 
@@ -199,6 +203,167 @@ export default function Dashboard() {
     };
   };
 
+  async function buildReportRows() {
+    // Determine source of features
+    let overrideActive = false;
+    try {
+      const statusRes = await axios.get("/api/upload/temp-data/status");
+      overrideActive = !!statusRes.data?.active;
+    } catch {}
+
+    const rows = [];
+    if (overrideActive) {
+      try {
+        const dataRes = await axios.get("/api/data");
+        const districtsMap = dataRes.data?.districts || {};
+        for (const [rawName, f] of Object.entries(districtsMap)) {
+          const name = canonicalName(rawName);
+          const eiiObj = districtData[name] || {};
+          let eii = eiiObj.inequality_index ?? eiiObj.EII;
+          // If not in districtData yet, compute
+          if (typeof eii !== "number") {
+            try {
+              const pr = await axios.post("/api/ml/predict-district", {
+                population_lakhs: Number(f.population_lakhs ?? 0),
+                literacy_rate: Number(f.literacy_rate ?? 0),
+                pupil_teacher_ratio: Number(f.pupil_teacher_ratio ?? 0),
+                teacher_difference: Number(f.teacher_difference ?? 0),
+              });
+              eii = pr.data?.inequality_index ?? pr.data?.EII ?? 0;
+            } catch {
+              eii = 0;
+            }
+          }
+          rows.push({
+            name,
+            population: Number(f.population_lakhs ?? 0),
+            literacy: Number(f.literacy_rate ?? 0),
+            ptr: Number(f.pupil_teacher_ratio ?? 0),
+            gap: Number(f.teacher_difference ?? 0),
+            status: getLabel(Number(eii) || 0),
+            eii: Number(eii) || 0,
+          });
+        }
+      } catch {}
+    } else {
+      // Fallback: use ML baseline features if available
+      let featuresMap = {};
+      try {
+        const featRes = await axios.get("/api/ml/district-features");
+        featuresMap = featRes.data || {};
+      } catch {}
+      // Extract list from geo
+      const features = geo?.features || [];
+      for (const f of features) {
+        const rawName = f.properties?.district || f.properties?.name;
+        const name = canonicalName(rawName);
+        const eiiObj = districtData[name] || {};
+        const eii = eiiObj.inequality_index ?? eiiObj.EII ?? 0;
+        const feat = featuresMap[name] || {};
+        rows.push({
+          name,
+          population: Number(feat.population_lakhs ?? 0),
+          literacy: Number(feat.literacy_rate ?? 0),
+          ptr: Number(feat.pupil_teacher_ratio ?? 0),
+          gap: Number(feat.teacher_difference ?? 0),
+          status: getLabel(Number(eii) || 0),
+          eii: Number(eii) || 0,
+        });
+      }
+    }
+    // Sort by status severity (Critical → Poor → Moderate → Excellent)
+    const order = { Critical: 3, Poor: 2, Moderate: 1, Excellent: 0 };
+    rows.sort((a, b) => (order[b.status] ?? 0) - (order[a.status] ?? 0));
+    return rows;
+  }
+
+  async function downloadReport() {
+    if (generating) return;
+    setGenerating(true);
+    try {
+      // Capture current map
+      const node = mapShotRef.current;
+      const canvas = await html2canvas(node, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+      });
+
+      const rows = await buildReportRows();
+      const pdf = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const margin = 12;
+
+      // Title
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.text("Karnataka Educational Inequality Report", margin, 18);
+
+      // Map image
+      const imgData = canvas.toDataURL("image/png");
+      const imgW = pageW - margin * 2;
+      const imgH = (canvas.height / canvas.width) * imgW;
+      pdf.addImage(imgData, "PNG", margin, 22, imgW, imgH);
+
+      // Table header
+      let y = 22 + imgH + 8;
+      pdf.setFontSize(11);
+      pdf.setTextColor(20);
+      const cols = [
+        { key: "name", label: "District", w: 46 },
+        { key: "population", label: "Population (L)", w: 36 },
+        { key: "literacy", label: "Literacy (%)", w: 30 },
+        { key: "ptr", label: "PTR", w: 22 },
+        { key: "gap", label: "Gap", w: 20 },
+        { key: "status", label: "Status", w: 32 },
+      ];
+      let x = margin;
+      pdf.setFont("helvetica", "bold");
+      for (const c of cols) {
+        pdf.text(c.label, x, y);
+        x += c.w;
+      }
+      y += 6;
+      pdf.setFont("helvetica", "normal");
+
+      // Rows
+      for (const r of rows) {
+        x = margin;
+        const vals = [
+          r.name,
+          Number.isFinite(r.population) ? r.population.toFixed(1) : "-",
+          Number.isFinite(r.literacy) ? r.literacy.toFixed(1) : "-",
+          Number.isFinite(r.ptr) ? r.ptr.toFixed(1) : "-",
+          Number.isFinite(r.gap) ? r.gap.toFixed(0) : "-",
+          r.status,
+        ];
+        for (let i = 0; i < cols.length; i++) {
+          pdf.text(String(vals[i]), x, y);
+          x += cols[i].w;
+        }
+        y += 6;
+        if (y > 282) {
+          pdf.addPage();
+          y = margin + 6;
+          x = margin;
+          pdf.setFont("helvetica", "bold");
+          for (const c of cols) {
+            pdf.text(c.label, x, y);
+            x += c.w;
+          }
+          y += 6;
+          pdf.setFont("helvetica", "normal");
+        }
+      }
+
+      pdf.save("EduMap_Dashboard_Report.pdf");
+    } catch (e) {
+      console.error("Failed to generate report", e);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <>
            {" "}
@@ -214,6 +379,7 @@ export default function Dashboard() {
       >
                         {/* MAP - Retaining original visual style */}       {" "}
         <div
+          ref={mapShotRef}
           style={{
             flex: 2,
             borderRadius: 10,
@@ -321,6 +487,7 @@ export default function Dashboard() {
           ))}
                     <div style={{ flexGrow: 1 }} />         {" "}
           <button
+            onClick={downloadReport}
             style={{
               width: "100%",
               padding: 12,
